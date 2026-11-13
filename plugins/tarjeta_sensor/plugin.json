@@ -1,0 +1,20 @@
+{
+  "id": "tarjeta_sensor",
+  "name": "Tarjeta de sensor",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "plugin.py",
+  "description": "Widget compuesto: título, valor grande, unidad y barra de color. Se exporta como un contenedor con tres etiquetas.",
+  "author": "Open LVGL Studio",
+  "translations": {
+    "en": {"Tarjeta de sensor": "Sensor card", "Título, valor y unidad de un sensor": "Title, value and unit of a sensor",
+           "Título": "Title", "Valor": "Value", "Unidad": "Unit", "Color de acento": "Accent colour",
+           "Fondo de la tarjeta": "Card background", "Fuente del valor": "Value font", "Contenido": "Content"},
+    "fr": {"Tarjeta de sensor": "Carte de capteur", "Título, valor y unidad de un sensor": "Titre, valeur et unité d’un capteur",
+           "Título": "Titre", "Unidad": "Unité", "Color de acento": "Couleur d’accent",
+           "Fondo de la tarjeta": "Fond de la carte", "Fuente del valor": "Police de la valeur"},
+    "de": {"Tarjeta de sensor": "Sensorkarte", "Título, valor y unidad de un sensor": "Titel, Wert und Einheit eines Sensors",
+           "Título": "Titel", "Unidad": "Einheit", "Color de acento": "Akzentfarbe",
+           "Fondo de la tarjeta": "Kartenhintergrund", "Fuente del valor": "Schrift des Werts"}
+  }
+}

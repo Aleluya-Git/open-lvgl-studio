@@ -1,0 +1,14 @@
+{
+  "id": "reglas_ux",
+  "name": "Reglas de usabilidad",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "plugin.py",
+  "description": "Revisa el tamaño de los elementos táctiles, el contraste del texto e imágenes sin origen; incluye una orden que agranda los botones pequeños.",
+  "author": "Open LVGL Studio",
+  "translations": {
+    "en": {"Agrandar elementos táctiles pequeños (48 px)": "Enlarge small touch targets (48 px)"},
+    "fr": {"Agrandar elementos táctiles pequeños (48 px)": "Agrandir les petites zones tactiles (48 px)"},
+    "de": {"Agrandar elementos táctiles pequeños (48 px)": "Kleine Touch-Ziele vergrößern (48 px)"}
+  }
+}

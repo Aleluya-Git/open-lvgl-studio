@@ -1,0 +1,22 @@
+esphome:
+  name: con-paquetes
+
+display:
+  - platform: ili9xxx
+    model: ST7796
+    dimensions: 480x320
+    rotation: 90
+
+packages:
+  ui: !include ui_parte.yaml
+  remoto:
+    url: https://github.com/ejemplo/paquetes
+    files: [x.yaml]
+
+lvgl:
+  pages:
+    - id: principal
+      widgets:
+        - label:
+            id: lbl_principal
+            text: Principal

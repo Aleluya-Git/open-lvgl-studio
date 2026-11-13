@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-lvgl-studio"
+dynamic = ["version"]
+description = "Diseñador visual de interfaces LVGL para ESPHome, con sincronización bidireccional del YAML"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "GPL-3.0-or-later OR LicenseRef-OLVGL-Commercial"}
+dependencies = ["PySide6>=6.6", "PyYAML>=6.0"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "License :: Other/Proprietary License",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Embedded Systems",
+    "Topic :: Home Automation",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[project.scripts]
+olvgl = "olvgl.cli:main"
+
+[project.gui-scripts]
+open-lvgl-studio = "olvgl.presentation.app:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "olvgl.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["olvgl*"]
+
+[tool.setuptools.package-data]
+olvgl = ["resources/**/*", "i18n/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

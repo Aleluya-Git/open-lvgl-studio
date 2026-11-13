@@ -1,0 +1,14 @@
+Open LVGL Studio para VS Code
+Copyright (C) 2026 Open LVGL Studio
+
+Licencia doble: GNU General Public License v3.0 o posterior (texto completo en el fichero LICENSE de
+Open LVGL Studio, https://www.gnu.org/licenses/gpl-3.0.html) o licencia comercial de Open LVGL Studio
+(COMMERCIAL-LICENSE.md). Ver LICENSING.md.
+
+La extensión forma parte de la edición Pro: con la edición Community la vista previa, Live Sync y los
+diagnósticos indican que hace falta una licencia Pro o Enterprise (Ayuda › Licencia en la aplicación).
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General
+Public License as published by the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

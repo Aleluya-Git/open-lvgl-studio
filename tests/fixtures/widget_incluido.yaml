@@ -1,0 +1,6 @@
+button:
+  id: btn_incluido
+  widgets:
+    - label:
+        text: Incluido
+        align: CENTER

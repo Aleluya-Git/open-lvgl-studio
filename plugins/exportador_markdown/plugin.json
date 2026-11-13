@@ -1,0 +1,14 @@
+{
+  "id": "exportador_markdown",
+  "name": "Documentación del proyecto",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "plugin.py",
+  "description": "Exporta la documentación del proyecto en Markdown (páginas, widgets, eventos, recursos) y un inventario CSV de widgets.",
+  "author": "Open LVGL Studio",
+  "translations": {
+    "en": {"Documentación (Markdown)": "Documentation (Markdown)", "Inventario de widgets (CSV)": "Widget inventory (CSV)"},
+    "fr": {"Documentación (Markdown)": "Documentation (Markdown)", "Inventario de widgets (CSV)": "Inventaire des widgets (CSV)"},
+    "de": {"Documentación (Markdown)": "Dokumentation (Markdown)", "Inventario de widgets (CSV)": "Widget-Inventar (CSV)"}
+  }
+}

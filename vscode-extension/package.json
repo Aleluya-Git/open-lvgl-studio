@@ -1,0 +1,55 @@
+{
+  "name": "open-lvgl-studio",
+  "displayName": "Open LVGL Studio",
+  "description": "Diseñador visual LVGL para ESPHome: abre el YAML en el diseñador, sincronización en vivo, vista previa, diagnósticos y exportación a C.",
+  "version": "0.9.0",
+  "publisher": "olvgl",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "icon": "media/icon.png",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Visualization", "Other", "Snippets"],
+  "keywords": ["lvgl", "esphome", "gui", "designer", "embedded"],
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:yaml", "workspaceContains:**/*.olvgl"],
+  "contributes": {
+    "commands": [
+      { "command": "olvgl.openDesigner", "title": "Abrir en Open LVGL Studio", "category": "LVGL", "icon": "media/icon.png" },
+      { "command": "olvgl.showPreview", "title": "Vista previa LVGL", "category": "LVGL" },
+      { "command": "olvgl.showPreviewToSide", "title": "Vista previa LVGL al lado", "category": "LVGL", "icon": "media/preview.svg" },
+      { "command": "olvgl.validate", "title": "Comprobar el YAML de LVGL", "category": "LVGL" },
+      { "command": "olvgl.exportC", "title": "Exportar código C (LVGL 9)…", "category": "LVGL" },
+      { "command": "olvgl.selectStudio", "title": "Elegir la carpeta de Open LVGL Studio…", "category": "LVGL" },
+      { "command": "olvgl.restartServer", "title": "Reiniciar el motor de vista previa", "category": "LVGL" }
+    ],
+    "menus": {
+      "editor/title": [
+        { "command": "olvgl.showPreviewToSide", "when": "resourceLangId == yaml", "group": "navigation@1" },
+        { "command": "olvgl.openDesigner", "when": "resourceLangId == yaml", "group": "navigation@2" }
+      ],
+      "editor/context": [
+        { "command": "olvgl.openDesigner", "when": "resourceLangId == yaml", "group": "olvgl@1" },
+        { "command": "olvgl.showPreviewToSide", "when": "resourceLangId == yaml", "group": "olvgl@2" }
+      ],
+      "explorer/context": [
+        { "command": "olvgl.openDesigner", "when": "resourceExtname == .yaml || resourceExtname == .yml || resourceExtname == .olvgl", "group": "olvgl@1" },
+        { "command": "olvgl.showPreview", "when": "resourceExtname == .yaml || resourceExtname == .yml", "group": "olvgl@2" }
+      ]
+    },
+    "keybindings": [
+      { "command": "olvgl.showPreviewToSide", "key": "ctrl+k v", "mac": "cmd+k v", "when": "editorLangId == yaml" },
+      { "command": "olvgl.openDesigner", "key": "ctrl+alt+d", "mac": "cmd+alt+d", "when": "editorLangId == yaml" }
+    ],
+    "configuration": {
+      "title": "Open LVGL Studio",
+      "properties": {
+        "olvgl.studioPath": { "type": "string", "default": "", "description": "Carpeta donde está instalado Open LVGL Studio (contiene main.py). Vacío: se detecta sola." },
+        "olvgl.pythonPath": { "type": "string", "default": "", "description": "Python con PySide6. Vacío: el .venv de Open LVGL Studio." },
+        "olvgl.liveSync": { "type": "boolean", "default": true, "description": "Live Sync: la vista previa sigue lo que escribes sin guardar y, si el fichero está abierto en el diseñador, se guarda solo para que el diseñador lo recargue." },
+        "olvgl.liveSyncDelay": { "type": "number", "default": 600, "minimum": 150, "description": "Espera (ms) tras dejar de escribir antes de actualizar." },
+        "olvgl.validateOnSave": { "type": "boolean", "default": true, "description": "Mostrar en «Problemas» los avisos de Open LVGL Studio al abrir y guardar." },
+        "olvgl.previewScale": { "type": "number", "default": 1, "minimum": 0.25, "maximum": 3, "description": "Resolución de la vista previa (1 = píxeles de la pantalla)." }
+      }
+    },
+    "snippets": [ { "language": "yaml", "path": "./snippets/lvgl.json" } ]
+  }
+}

@@ -1,0 +1,172 @@
+{
+  "format": "open-lvgl-studio",
+  "schema_version": 2,
+  "name": "Panel salón",
+  "display": {
+    "name": "Waveshare ESP32-S3-Touch-LCD-7B",
+    "width": 1024,
+    "height": 600
+  },
+  "esphome": {
+    "device_name": "panel-salon",
+    "lvgl_version": 9
+  },
+  "source": {},
+  "images": [
+    {
+      "id": "img_bombilla",
+      "path": "images/bombilla.png",
+      "type": "RGB565",
+      "transparency": "alpha_channel",
+      "extra": {}
+    }
+  ],
+  "fonts": [],
+  "styles": [],
+  "lvgl_extra": {},
+  "extra_sections": {},
+  "top_layer": null,
+  "screens": [
+    {
+      "id": "inicio",
+      "name": "Inicio",
+      "bg_color": "#1A1A2E",
+      "props": {},
+      "widgets": [
+        {
+          "id": "lbl_titulo",
+          "type": "label",
+          "x": 40,
+          "y": 30,
+          "width": 400,
+          "height": 50,
+          "props": {
+            "text": "Salón",
+            "text_color": "#FFFFFF",
+            "text_font": "montserrat_36"
+          },
+          "events": [],
+          "children": []
+        },
+        {
+          "id": "img_luz_icono",
+          "type": "image",
+          "x": 60,
+          "y": 140,
+          "width": null,
+          "height": null,
+          "props": {
+            "src": "img_bombilla"
+          },
+          "events": [],
+          "children": []
+        },
+        {
+          "id": "btn_luz_salon",
+          "type": "button",
+          "x": 140,
+          "y": 140,
+          "width": 240,
+          "height": 64,
+          "props": {
+            "text": "Luz salón",
+            "bg_color": "#7E57C2",
+            "radius": 16,
+            "checkable": true,
+            "text_font": "montserrat_20"
+          },
+          "events": [
+            {
+              "trigger": "on_click",
+              "actions": [
+                {
+                  "kind": "ha_action",
+                  "params": {
+                    "action": "light.toggle",
+                    "entity_id": "light.salon"
+                  }
+                }
+              ]
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "btn_ir_ajustes",
+          "type": "button",
+          "x": 800,
+          "y": 30,
+          "width": 180,
+          "height": 56,
+          "props": {
+            "text": "Ajustes",
+            "bg_color": "#455A64"
+          },
+          "events": [
+            {
+              "trigger": "on_click",
+              "actions": [
+                {
+                  "kind": "page_show",
+                  "params": {
+                    "page": "ajustes"
+                  }
+                }
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "ajustes",
+      "name": "Ajustes",
+      "bg_color": "#3E2723",
+      "props": {},
+      "widgets": [
+        {
+          "id": "lbl_ajustes",
+          "type": "label",
+          "x": 40,
+          "y": 30,
+          "width": 400,
+          "height": 50,
+          "props": {
+            "text": "Ajustes",
+            "text_color": "#FFE0B2",
+            "text_font": "montserrat_36"
+          },
+          "events": [],
+          "children": []
+        },
+        {
+          "id": "btn_volver",
+          "type": "button",
+          "x": 40,
+          "y": 500,
+          "width": 140,
+          "height": 50,
+          "props": {
+            "text": "Volver",
+            "bg_color": "#6D4C41"
+          },
+          "events": [
+            {
+              "trigger": "on_click",
+              "actions": [
+                {
+                  "kind": "page_show",
+                  "params": {
+                    "page": "inicio"
+                  }
+                }
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+ "format": "olvgl-catalog",
+ "title": "Componentes de ejemplo de Open LVGL Studio",
+ "components": [
+  {
+   "id": "barra-de-navegacion",
+   "name": "Barra de navegación",
+   "version": "1.0.0",
+   "url": "barra-de-navegacion.olvglc",
+   "sha256": "ed7f3e7e36831fe45bdf7075a227f3558f7f614b5eeb545e19ffa6af52753b9a",
+   "author": "Open LVGL Studio",
+   "description": "Cuatro botones para cambiar de página, a lo ancho de la pantalla.",
+   "tags": [
+    "navegación",
+    "páginas",
+    "barra"
+   ],
+   "license": "MIT",
+   "widgets": 5
+  },
+  {
+   "id": "medidor-de-energia",
+   "name": "Medidor de energía",
+   "version": "1.0.0",
+   "url": "medidor-de-energia.olvglc",
+   "sha256": "621e62c17b274e46c198242f0fc8495b8040b38e8e7528261756f5ad936a8b39",
+   "author": "Open LVGL Studio",
+   "description": "Valor grande, unidad y barra de consumo.",
+   "tags": [
+    "energía",
+    "sensor",
+    "barra"
+   ],
+   "license": "MIT",
+   "widgets": 4
+  },
+  {
+   "id": "tarjeta-de-luz",
+   "name": "Tarjeta de luz",
+   "version": "1.0.0",
+   "url": "tarjeta-de-luz.olvglc",
+   "sha256": "c1f7335810a8787ab7ab9dfa523013b1f9f5578d8e471c2e93c71de1a67e36d6",
+   "author": "Open LVGL Studio",
+   "description": "Botón conmutable con nombre y estado para una luz de Home Assistant.",
+   "tags": [
+    "luces",
+    "home assistant",
+    "botón"
+   ],
+   "license": "MIT",
+   "widgets": 3
+  },
+  {
+   "id": "termostato",
+   "name": "Termostato",
+   "version": "1.0.0",
+   "url": "termostato.olvglc",
+   "sha256": "20381880cca1ebc0056aca0e0ca926ef3d508a9309b387ef8c63909ad0c2982c",
+   "author": "Open LVGL Studio",
+   "description": "Arco ajustable con la temperatura de consigna y la actual.",
+   "tags": [
+    "clima",
+    "termostato",
+    "arco"
+   ],
+   "license": "MIT",
+   "widgets": 4
+  }
+ ]
+}

@@ -1,0 +1,9 @@
+image:
+  rgb565:
+    - file: no_existe.png
+      id: img_falta
+lvgl:
+  pages:
+    - id: desde_paquete
+      widgets:
+        - !include widget_incluido.yaml

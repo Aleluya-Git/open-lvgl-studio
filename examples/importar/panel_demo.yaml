@@ -1,0 +1,244 @@
+# Panel de ejemplo para probar la importación de Open LVGL Studio.
+# Usa las construcciones habituales de un panel domótico ESPHome + LVGL.
+substitutions:
+  nombre: panel-demo
+
+esphome:
+  name: ${nombre}
+  friendly_name: Panel demo
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+
+display:
+  - platform: mipi_rgb
+    id: pantalla
+    dimensions:
+      width: 1024
+      height: 600
+
+color:
+  - id: morado
+    hex: 7E57C2
+  - id: gris_tarjeta
+    red: 12%
+    green: 12%
+    blue: 16%
+
+font:
+  - file: "gfonts://Roboto"
+    id: roboto_20
+    size: 20
+  - file: "gfonts://Roboto"
+    id: roboto_36
+    size: 36
+
+image:
+  - file: images/bombilla.png
+    id: img_bombilla
+    type: RGB565
+    transparency: alpha_channel
+
+sensor:
+  - platform: homeassistant
+    id: temp_ext
+    entity_id: sensor.temperatura_exterior
+
+lvgl:
+  byte_order: big_endian
+  buffer_size: 25%
+  default_font: roboto_20
+  bg_color: 0x101018
+  text_color: 0xFFFFFF
+  theme:
+    button:
+      radius: 14
+      bg_color: morado
+  style_definitions:
+    - id: tarjeta
+      bg_color: gris_tarjeta
+      radius: 16
+      border_width: 0
+      pad_all: 12
+      pressed:
+        bg_color: 0x2A2A38
+  top_layer:
+    widgets:
+      - obj:
+          id: barra_superior
+          width: 100%
+          height: 60
+          align: TOP_MID
+          bg_color: 0x16161F
+          radius: 0
+          border_width: 0
+          pad_all: 0
+          widgets:
+            - label:
+                id: lbl_hora
+                align: LEFT_MID
+                x: 20
+                text: "12:34"
+                text_font: roboto_36
+            - label:
+                id: lbl_temp_ext
+                align: RIGHT_MID
+                x: -20
+                text: !lambda |-
+                  return str_sprintf("%.1f °C", id(temp_ext).state);
+  pages:
+    - id: inicio
+      widgets:
+        - label:
+            id: lbl_titulo_luces
+            x: 20
+            y: 74
+            text: Luces
+        - obj:
+            id: panel_luces
+            styles: tarjeta
+            x: 20
+            y: 110
+            width: 480
+            height: 210
+            layout:
+              type: flex
+              flex_flow: ROW_WRAP
+              flex_align_main: SPACE_EVENLY
+              pad_row: 12
+            widgets:
+              - button:
+                  id: btn_comedor
+                  width: 140
+                  height: 80
+                  checkable: true
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: Comedor
+                  on_click:
+                    - homeassistant.action:
+                        action: light.toggle
+                        data:
+                          entity_id: light.comedor
+              - button:
+                  id: btn_salon
+                  width: 140
+                  height: 80
+                  checkable: true
+                  widgets:
+                    - label:
+                        id: btn_salon_label
+                        align: CENTER
+                        text: Salón
+                  on_click:
+                    - homeassistant.action:
+                        action: light.toggle
+                        data:
+                          entity_id: light.salon
+              - button:
+                  id: btn_escritorio
+                  width: 140
+                  height: 80
+                  widgets:
+                    - image:
+                        src: img_bombilla
+                        align: CENTER
+              - switch:
+                  id: sw_ventilador
+                  on_value:
+                    then:
+                      - if:
+                          condition:
+                            lambda: return x;
+                          then:
+                            - homeassistant.action:
+                                action: fan.turn_on
+                                data:
+                                  entity_id: fan.salon
+                          else:
+                            - homeassistant.action:
+                                action: fan.turn_off
+                                data:
+                                  entity_id: fan.salon
+        - obj:
+            id: panel_clima
+            styles: tarjeta
+            align: TOP_RIGHT
+            x: -20
+            y: 110
+            width: 45%
+            height: 210
+            layout: 2x2
+            widgets:
+              - label:
+                  text: Salón
+              - arc:
+                  id: arc_temp
+                  width: 100
+                  height: 100
+                  min_value: 15
+                  max_value: 30
+                  value: 21
+              - slider:
+                  id: sl_persiana
+                  width: 160
+                  value: 60
+              - label:
+                  id: lbl_humedad
+                  text:
+                    format: "%.0f %%"
+                    args: ["id(humedad).state"]
+        - tabview:
+            id: pestanas
+            x: 20
+            y: 340
+            width: 984
+            height: 240
+            tabs:
+              - name: Planta baja
+                id: tab_pb
+                widgets:
+                  - label:
+                      text: Planta baja
+              - name: Primera planta
+                id: tab_pp
+                widgets:
+                  - label:
+                      id: lbl_pp
+                      text: Primera planta
+                  - checkbox:
+                      id: chk_bano
+                      y: 40
+                      text: Baño
+    - id: ajustes
+      bg_color: 0x3E2723
+      on_load:
+        - logger.log: "Entrando en ajustes"
+      widgets:
+        - button:
+            id: btn_volver
+            align: BOTTOM_LEFT
+            x: 20
+            y: -20
+            widgets:
+              - label:
+                  align: CENTER
+                  text: Volver
+            on_click:
+              - lvgl.page.previous:
+        - dropdown:
+            id: dd_reposo
+            align: CENTER
+            options:
+              - "30 s"
+              - "1 min"
+              - "5 min"

@@ -1,0 +1,57 @@
+{
+  "LVGL: página": {
+    "prefix": "lvgl-page",
+    "body": ["- id: ${1:pagina}", "  bg_color: ${2:0x101018}", "  widgets:", "    - ${0}"],
+    "description": "Página de LVGL (lvgl: pages:)"
+  },
+  "LVGL: etiqueta": {
+    "prefix": "lvgl-label",
+    "body": ["- label:", "    id: ${1:lbl_titulo}", "    x: ${2:20}", "    y: ${3:20}", "    text: \"${4:Texto}\"", "    text_font: ${5:montserrat_20}", "    text_color: ${6:0xFFFFFF}"],
+    "description": "Etiqueta de texto"
+  },
+  "LVGL: botón con texto": {
+    "prefix": "lvgl-button",
+    "body": ["- button:", "    id: ${1:btn_luz}", "    x: ${2:20}", "    y: ${3:80}", "    width: ${4:160}", "    height: ${5:60}", "    widgets:", "      - label:", "          text: \"${6:Luz}\"", "          align: CENTER", "    on_click:", "      - ${0:homeassistant.action:", "          action: light.toggle", "          data:", "            entity_id: light.salon}"],
+    "description": "Botón con etiqueta y acción al pulsar"
+  },
+  "LVGL: interruptor": {
+    "prefix": "lvgl-switch",
+    "body": ["- switch:", "    id: ${1:sw_ventilador}", "    x: ${2:20}", "    y: ${3:160}", "    on_value:", "      - ${0:logger.log: \"cambiado\"}"],
+    "description": "Interruptor"
+  },
+  "LVGL: deslizador": {
+    "prefix": "lvgl-slider",
+    "body": ["- slider:", "    id: ${1:sl_brillo}", "    x: ${2:20}", "    y: ${3:240}", "    width: ${4:200}", "    min_value: ${5:0}", "    max_value: ${6:100}", "    value: ${7:50}"],
+    "description": "Deslizador"
+  },
+  "LVGL: arco": {
+    "prefix": "lvgl-arc",
+    "body": ["- arc:", "    id: ${1:arc_temp}", "    x: ${2:20}", "    y: ${3:20}", "    width: ${4:150}", "    height: ${5:150}", "    min_value: ${6:15}", "    max_value: ${7:30}", "    value: ${8:21}", "    adjustable: true"],
+    "description": "Arco (indicador o control)"
+  },
+  "LVGL: contenedor flex": {
+    "prefix": "lvgl-flex",
+    "body": ["- obj:", "    id: ${1:panel}", "    width: ${2:100%}", "    height: SIZE_CONTENT", "    layout:", "      type: FLEX", "      flex_flow: ${3|ROW_WRAP,ROW,COLUMN,COLUMN_WRAP|}", "      pad_row: 8", "      pad_column: 8", "    widgets:", "      - ${0}"],
+    "description": "Contenedor con disposición flex"
+  },
+  "LVGL: pestañas": {
+    "prefix": "lvgl-tabview",
+    "body": ["- tabview:", "    id: ${1:pestanas}", "    width: 100%", "    height: ${2:300}", "    tabs:", "      - name: ${3:Uno}", "        id: ${4:tab_uno}", "        widgets:", "          - ${0}", "      - name: ${5:Dos}", "        id: ${6:tab_dos}", "        widgets: []"],
+    "description": "Vista con pestañas"
+  },
+  "LVGL: ir a página": {
+    "prefix": "lvgl-goto",
+    "body": ["on_click:", "  - lvgl.page.show: ${1:pagina}"],
+    "description": "Acción: mostrar otra página"
+  },
+  "LVGL: ocultar widget": {
+    "prefix": "lvgl-hide",
+    "body": ["- lvgl.widget.${1|hide,show,disable,enable|}: ${2:id_widget}"],
+    "description": "Acción: mostrar u ocultar un widget"
+  },
+  "LVGL: actualizar etiqueta": {
+    "prefix": "lvgl-update",
+    "body": ["- lvgl.label.update:", "    id: ${1:lbl_titulo}", "    text: \"${2:Nuevo texto}\""],
+    "description": "Acción: cambiar propiedades de un widget"
+  }
+}

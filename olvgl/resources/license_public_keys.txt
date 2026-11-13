@@ -1,0 +1,4 @@
+# Claves públicas Ed25519 (hex, 64 caracteres) que pueden firmar licencias de Open LVGL Studio.
+# Genera tu par de claves con:  python tools/license_tool.py keygen
+# y pega aquí la clave pública que te muestra (la privada NUNCA va en este fichero ni en el repositorio).
+705c4f233a4fa72311386dce0e3b7f1acb108c286f3dcc65b4c64ccb6e8d9f2d  # clave del autor, 2026-11-11

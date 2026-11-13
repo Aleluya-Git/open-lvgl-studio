@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+capturas/
+autoprueba_resultado.txt
+*.olvgl.autosave
+autoprueba_cuelgue.txt
+*.olvgl.bak
+*.lnk
+dist/
+fuzz_fallos/
+*.presencia/
+*.olvgl-lic
