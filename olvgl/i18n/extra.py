@@ -38,4 +38,6 @@ EXTRA = (
     "Importar y sincronizar YAML de ESPHome", "Extensión de VS Code (vista previa, Live Sync, diagnósticos)",
     "Herramientas de IA (generar, refactorizar, estilos e ids)",
     "No se pueden guardar pantallas sin los ajustes de la aplicación",
+    # tamaño de los iconos de las barras
+    "Pequeños", "Medianos", "Grandes", "Muy grandes",
 )

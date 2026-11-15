@@ -43,6 +43,8 @@ class FontFetcher(QObject):
 PROJECT_FILTER_ES = "Proyecto Open LVGL Studio (*{ext})"
 SYNC_DELAY_MS = 800
 YAML_FILTER = "YAML de ESPHome (*.yaml *.yml)"
+ICON_SIZES = ((22, "Pequeños"), (28, "Medianos"), (32, "Grandes"), (40, "Muy grandes"))
+DEFAULT_ICON_SIZE = 32
 AUTOSAVE_MS = 60_000
 
 
@@ -104,6 +106,8 @@ class MainWindow(QMainWindow):
         self.view.zoom_changed.connect(lambda z: self.lbl_zoom.setText(f"{tr('Zoom')} {z * 100:.0f} %"))
         self.view.cursor_moved.connect(lambda x, y: self.lbl_cursor.setText(f"x {x}  y {y}"))
 
+        size = self.settings.get("toolbar_icon_size", DEFAULT_ICON_SIZE)
+        self.toolbar_icon_size = size if size in dict(ICON_SIZES) else DEFAULT_ICON_SIZE
         self._build_actions()
         self._build_menus()
 
@@ -327,6 +331,16 @@ class MainWindow(QMainWindow):
                 a.setStatusTip(tr(sp.description))
                 a.triggered.connect(lambda _c=False, t=sp.type: self.vm.add_widget(t))
 
+    def set_toolbar_icon_size(self, px: int) -> None:
+        """Ver › Tamaño de los iconos: las barras de herramientas, al momento y para siempre."""
+        px = int(px)
+        self.toolbar_icon_size = px
+        for tb in getattr(self, "toolbars", []):
+            tb.setIconSize(QSize(px, px))
+        if px in getattr(self, "icon_size_actions", {}):
+            self.icon_size_actions[px].setChecked(True)
+        self.settings.set("toolbar_icon_size", px)
+
     def _build_menus(self) -> None:
         mb = self.menuBar()
         # ------------------------------------------------ Archivo
@@ -405,6 +419,18 @@ class MainWindow(QMainWindow):
         self.language_menu = lm
         for a in self.lang_actions.values():
             lm.addAction(a)
+        im = m.addMenu(action_icon("zoom_in"), tr("Tamaño de los iconos"))
+        self.icon_size_menu = im
+        self.icon_size_group = QActionGroup(self)
+        self.icon_size_group.setExclusive(True)
+        self.icon_size_actions = {}
+        for px, label in ICON_SIZES:
+            a = im.addAction(f"{tr(label)} ({px} px)")
+            a.setCheckable(True)
+            a.setChecked(px == self.toolbar_icon_size)
+            a.triggered.connect(lambda _c=False, v=px: self.set_toolbar_icon_size(v))
+            self.icon_size_group.addAction(a)
+            self.icon_size_actions[px] = a
 
         # ------------------------------------------------ Simulación
         m = mb.addMenu(tr("Si&mulación"))
@@ -453,7 +479,7 @@ class MainWindow(QMainWindow):
         def bar(title: str, name: str, actions) -> QToolBar:
             tb = QToolBar(title, self)
             tb.setObjectName(name)
-            tb.setIconSize(QSize(22, 22))
+            tb.setIconSize(QSize(self.toolbar_icon_size, self.toolbar_icon_size))
             for a in actions:
                 if a is None:
                     tb.addSeparator()

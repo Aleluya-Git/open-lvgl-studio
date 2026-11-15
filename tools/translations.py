@@ -913,6 +913,12 @@ T = [
     ('★ Guardar esta pantalla en «Mis pantallas»…', '★ Save this screen to “My screens”…', '★ Enregistrer cet écran dans « Mes écrans »…', '★ Diesen Bildschirm in „Meine Bildschirme“ speichern…'),
     ('Para elegirla en otros proyectos y en el simulador', 'To choose it in other projects and in the simulator', 'Pour le choisir dans d’autres projets et dans le simulateur', 'Um ihn in anderen Projekten und im Simulator auszuwählen'),
     ('No se pueden guardar pantallas sin los ajustes de la aplicación', 'Screens cannot be saved without the application settings', 'Impossible d’enregistrer des écrans sans les réglages de l’application', 'Bildschirme können ohne die Anwendungseinstellungen nicht gespeichert werden'),
+    # ---- tamaño de los iconos
+    ('Tamaño de los iconos', 'Icon size', 'Taille des icônes', 'Symbolgröße'),
+    ('Pequeños', 'Small', 'Petites', 'Klein'),
+    ('Medianos', 'Medium', 'Moyennes', 'Mittel'),
+    ('Grandes', 'Large', 'Grandes', 'Groß'),
+    ('Muy grandes', 'Extra large', 'Très grandes', 'Sehr groß'),
 ]
 
 

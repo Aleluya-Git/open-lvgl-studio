@@ -2,6 +2,7 @@
 
 ## 0.10.0b1 — Enterprise (Fase 10)
 
+- **Iconos de la barra superior más grandes** (32 px por defecto) y ajustables en Ver › Tamaño de los iconos (22, 28, 32 o 40 px).
 - **Pantalla personalizada desde el panel lateral**: Propiedades del proyecto › Placa › «＋ Nueva pantalla personalizada…» y «★ Guardar esta pantalla en Mis pantallas».
 - **Importar YAML más robusto**: páginas de GitHub guardadas como .yaml (se recupera el YAML y no se vincula), ficheros en UTF-16/Windows-1252, caracteres nulos y mensajes claros con línea y columna para caracteres no permitidos.
 - **Licencia doble** GPL-3.0-or-later o comercial; ediciones activas: Pro (importar/sincronizar YAML y extensión de VS Code) y Enterprise (IA). Clave pública del autor registrada.

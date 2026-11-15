@@ -1584,6 +1584,19 @@ def gui_tests() -> None:
             m.grab().save(os.path.join(CAPTURES, f"menu_{name}.png"))
         win.grab().save(os.path.join(CAPTURES, "ventana_menus.png"))
 
+    @check("UI · Iconos de la barra superior más grandes y ajustables (Ver › Tamaño de los iconos)")
+    def _():
+        from olvgl.presentation.main_window import DEFAULT_ICON_SIZE
+        assert DEFAULT_ICON_SIZE >= 32
+        assert all(tb.iconSize().width() == win.toolbar_icon_size for tb in win.toolbars)
+        win.set_toolbar_icon_size(40)
+        pump(50)
+        assert all(tb.iconSize().width() == 40 for tb in win.toolbars) and settings.get("toolbar_icon_size") == 40
+        win.grab().save(os.path.join(CAPTURES, "iconos_40px.png"))
+        win.set_toolbar_icon_size(DEFAULT_ICON_SIZE)
+        pump(50)
+        win.grab().save(os.path.join(CAPTURES, "iconos_barra.png"))
+
     @check("UI · Idiomas: español, inglés, francés y alemán (capturas/idioma_*.png)")
     def _():
         from olvgl import i18n
