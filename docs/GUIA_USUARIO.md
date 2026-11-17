@@ -24,7 +24,7 @@ Open LVGL Studio es un diseñador visual de pantallas **LVGL para ESPHome**: dib
 
 - **Widgets** (izquierda): arrastra al lienzo o doble clic. También en **Insertar**, por categorías.
 - **Lienzo** (centro): la página tal como se verá. Ctrl+rueda = zoom, botón central o Espacio+arrastrar = desplazar.
-- **Proyecto** (árbol): páginas, capa superior y widgets anidados. Doble clic en una página para cambiar su nombre.
+- **Proyecto** (árbol): páginas, capa superior y widgets anidados. Doble clic en una página para cambiar su nombre. **Arrastra** widgets para cambiar su orden (arriba en la lista = dibujado encima), suéltalos **sobre** un contenedor (obj, botón, pestaña, mosaico) para meterlos dentro o sobre otra página para llevarlos allí; conservan su posición en pantalla. También puedes arrastrar páginas para reordenarlas. Todo se deshace con Ctrl+Z.
 - **Propiedades** (derecha): las del widget seleccionado. Para estilos por **parte** (indicador, tirador…) y **estado** (pulsado, activado…) elige parte y estado arriba del editor de estilo.
 - **YAML ESPHome** (abajo): el código en vivo. Avisa si hay problemas (ids repetidos, páginas que no existen, mínimos mayores que máximos…).
 
@@ -42,6 +42,10 @@ Open LVGL Studio es un diseñador visual de pantallas **LVGL para ESPHome**: dib
 - **Contenedores**: suelta un widget sobre un `obj`, una pestaña o un mosaico para meterlo dentro. Con *layout* FLEX o GRID las posiciones las decide LVGL.
 - **Eventos**: en Propiedades › Eventos añade acciones a `on_click`, `on_value`, `on_long_press`, deslizamientos…: cambiar de página, mostrar/ocultar widgets, cambiar sus propiedades, acciones de Home Assistant, esperas, lambdas o YAML libre.
 - **Estilos y tema**: **Diseño › Estilos y tema** crea estilos reutilizables y el tema por tipo de widget.
+- **Rejilla**: **Ver › Tamaño de la rejilla** (de 2 a 50 px o personalizado); con **Ajustar a la rejilla** los widgets se colocan en ella al moverlos o redimensionarlos.
+- **Degradados**: en botones, contenedores, barras, deslizadores y arcos, grupo **Degradado** de las propiedades (dirección, color final, inicio y fin). En el editor de estilo, el grupo **Degradado** sirve para cualquier parte (indicador, tirador…) y estado.
+- **Editor de estilo**: los grupos (Fondo, Degradado, Borde, Contorno, Sombra, Texto, Relleno, Arco, Línea, Imagen, Tamaño y posición) se abren y cierran con un clic; «×» quita una propiedad para usar la heredada.
+- **Indicador de aguja**: **Editar escalas, marcas y agujas…** en sus propiedades: escalas, marcas con números, agujas (línea o imagen), arcos y rangos de color de las marcas, con vista previa. El valor de cada aguja se cambia también directamente en el panel; con un *id* se puede mover desde ESPHome con `lvgl.indicator.update`.
 
 ## 5. Trabajar sobre tu YAML
 
@@ -88,4 +92,4 @@ Pulsa botones, arrastra deslizadores, desliza entre pestañas y mosaicos. Puedes
 
 ## 13. Licencia
 
-**Ayuda › Licencia** muestra tu edición y te deja cargar una licencia (`.olvgl-lic`). **Community** (gratis) incluye todo el diseñador; **Pro** añade importar y sincronizar YAML de ESPHome y la extensión de VS Code; **Enterprise** añade las herramientas de IA. Si pides una función de otra edición, la aplicación te lo indica.
+**Ayuda › Licencia** muestra tu edición y te deja cargar una licencia (`.olvgl-lic`). **Community** (gratis) incluye todo el diseñador; **Pro** añade importar y sincronizar YAML de ESPHome y la extensión de VS Code; **Enterprise** añade las herramientas de IA. Ahora mismo el sistema de licencias está **desactivado**: todas las funciones están disponibles sin licencia.

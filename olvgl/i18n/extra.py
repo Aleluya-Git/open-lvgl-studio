@@ -40,4 +40,26 @@ EXTRA = (
     "No se pueden guardar pantallas sin los ajustes de la aplicación",
     # tamaño de los iconos de las barras
     "Pequeños", "Medianos", "Grandes", "Muy grandes",
+    # editor de estilo completo e indicador de aguja
+    'Degradado', 'Dirección del degradado', 'Color final del degradado', 'Empieza en (0-255)',
+    'Termina en (0-255)', 'Borde', 'Opacidad del borde', 'Lados del borde', 'Borde por encima de los hijos',
+    'Contorno', 'Color del contorno', 'Grosor del contorno', 'Separación del contorno',
+    'Opacidad del contorno', 'Desplazamiento X', 'Desplazamiento Y', 'Extensión', 'Opacidad de la sombra',
+    'Texto', 'Opacidad del texto', 'Fuente', 'Alineación del texto', 'Espacio entre letras',
+    'Espacio entre líneas', 'Decoración', 'Arriba', 'Abajo', 'Izquierda', 'Derecha', 'Entre filas',
+    'Entre columnas', 'Arco', 'Color del arco', 'Grosor del arco', 'Opacidad del arco',
+    'Extremos redondeados', 'Línea', 'Color de la línea', 'Grosor de la línea', 'Opacidad de la línea',
+    'Trazo (discontinua)', 'Hueco (discontinua)', 'Imagen', 'Teñir con color', 'Intensidad del tinte',
+    'Teñir la imagen de fondo', 'Intensidad del tinte de fondo', 'Tamaño y posición', 'Ancho mínimo',
+    'Ancho máximo', 'Alto mínimo', 'Alto máximo', 'Desplazar X', 'Desplazar Y', 'Giro (décimas de grado)',
+    'Recortar esquinas', 'Valor mínimo', 'Valor máximo', 'Ángulo total (°)',
+    'Ángulo de inicio (°, 0 = las 3)', 'Marcas por encima de los indicadores', 'Número de marcas', 'Grosor',
+    'Largo (px o %)', 'Color', 'Separación del borde', 'Cada cuántas marcas', 'Separación de los números',
+    'Id (para cambiarla con lvgl.indicator.update)', 'Valor',
+    'Largo respecto al radio (px, negativo = más corta)', 'Id (para cambiarlo con lvgl.indicator.update)',
+    'Desde el valor', 'Hasta el valor', 'Radio respecto a la escala (px)', 'Eje X en la imagen',
+    'Eje Y en la imagen', 'Color inicial', 'Color final', 'Grosor de las marcas',
+    'Degradado sólo en este rango', 'Aguja', 'Aguja de imagen', 'Color de marcas',
+    # deshacer: arrastrar en el árbol
+    'Mover en el árbol',
 )

@@ -41,10 +41,12 @@ STATE_LABELS = {"": "Normal", "pressed": "Pulsado", "checked": "Activado", "focu
                 "disabled": "Desactivado", "edited": "Editando", "hovered": "Ratón encima",
                 "focus_key": "Foco por teclado", "scrolled": "Desplazándose"}
 PARTS = ("main", "scrollbar", "indicator", "knob", "selected", "items", "cursor",
-         "textarea_placeholder")
+         "textarea_placeholder", "ticks")
 PART_LABELS = {"main": "Principal", "indicator": "Indicador", "knob": "Tirador",
                "selected": "Seleccionado", "items": "Elementos", "cursor": "Cursor",
-               "scrollbar": "Barra de desplazamiento", "textarea_placeholder": "Texto de ejemplo"}
+               "scrollbar": "Barra de desplazamiento", "textarea_placeholder": "Texto de ejemplo",
+               "ticks": "Marcas"}
+GRAD_DIRS = ("NONE", "HOR", "VER")
 
 # Colores aproximados del tema por defecto de LVGL 9 (modo claro)
 LV_PRIMARY = "#2196F3"
@@ -122,6 +124,18 @@ VALUE = (
 INDICATOR = (
     P("indicator.bg_color", "Color del indicador", KIND_COLOR, LV_PRIMARY),
 )
+
+
+def GRADIENT(prefix: str = "", group: str = "Degradado") -> tuple[PropSpec, ...]:
+    """Degradado de fondo de LVGL (bg_grad_*) de la parte `prefix` ("" = principal, "indicator."…)."""
+    return (
+        P(prefix + "bg_grad_dir", "Dirección del degradado", KIND_ENUM, "NONE", GRAD_DIRS, group=group),
+        P(prefix + "bg_grad_color", "Color final del degradado", KIND_COLOR, "#FFFFFF", group=group),
+        P(prefix + "bg_main_stop", "Empieza en (0-255)", KIND_INT, 0, group=group, maximum=255),
+        P(prefix + "bg_grad_stop", "Termina en (0-255)", KIND_INT, 255, group=group, maximum=255),
+    )
+
+
 CHECKED = P("state.checked", "Activado", KIND_BOOL, False, group="Valor")
 SCROLLABLE = P("scrollable", "Desplazable", KIND_BOOL, True, group="Comportamiento")
 CLICKABLE = P("clickable", "Responde al toque", KIND_BOOL, True, group="Comportamiento")
@@ -184,6 +198,7 @@ BUTTON = WidgetSpec(
         P("radius", "Radio de esquina", KIND_INT, 8, maximum=500),
         P("border_width", "Grosor del borde", KIND_INT, 0, maximum=50),
         P("border_color", "Color del borde", KIND_COLOR, LV_PRIMARY),
+        *GRADIENT(),
         P("checkable", "Conmutable", KIND_BOOL, False, group="Comportamiento"),
         HIDDEN,
     ),
@@ -205,7 +220,7 @@ IMAGE = WidgetSpec(
 OBJ = WidgetSpec(
     type="obj", label="Contenedor", default_size=(200, 150), id_prefix="obj",
     description="Caja para agrupar widgets (flex, grid…)", events=BUTTON_EVENTS,
-    props=BOX + (SCROLLABLE, CLICKABLE, HIDDEN),
+    props=BOX + GRADIENT() + (SCROLLABLE, CLICKABLE, HIDDEN),
     parts=("main", "scrollbar"),
 )
 
@@ -222,6 +237,13 @@ ARC = WidgetSpec(
         P("arc_color", "Color del arco", KIND_COLOR, "#E0E0E0"),
         P("arc_width", "Grosor del arco", KIND_INT, None, maximum=200),
         P("indicator.arc_color", "Color del indicador", KIND_COLOR, LV_PRIMARY),
+        P("indicator.arc_width", "Grosor del indicador", KIND_INT, None, maximum=200),
+        P("arc_rounded", "Extremos redondeados", KIND_BOOL, True),
+        P("bg_color", "Color de fondo (caja)", KIND_COLOR, "#FFFFFF", group="Degradado"),
+        P("bg_opa", "Opacidad del fondo (caja)", KIND_ENUM, "TRANSP", OPA_OPTIONS, group="Degradado"),
+        *GRADIENT(),
+        P("knob.bg_color", "Color del tirador", KIND_COLOR, LV_PRIMARY, group="Degradado del tirador"),
+        *GRADIENT("knob.", "Degradado del tirador"),
         HIDDEN,
     ),
     parts=("main", "indicator", "knob"),
@@ -237,7 +259,7 @@ BAR = WidgetSpec(
           minimum=-100000, maximum=100000),
         P("bg_color", "Color de fondo", KIND_COLOR, LV_PRIMARY),
         P("radius", "Radio de esquina", KIND_INT, None, maximum=1000),
-        *INDICATOR, HIDDEN,
+        *INDICATOR, *GRADIENT("indicator.", "Degradado del indicador"), *GRADIENT(), HIDDEN,
     ),
     parts=("main", "indicator"),
 )
@@ -251,6 +273,8 @@ SLIDER = WidgetSpec(
         P("bg_color", "Color de fondo", KIND_COLOR, LV_PRIMARY),
         *INDICATOR,
         P("knob.bg_color", "Color del tirador", KIND_COLOR, "#FFFFFF"),
+        *GRADIENT("indicator.", "Degradado del indicador"), *GRADIENT(),
+        *GRADIENT("knob.", "Degradado del tirador"),
         HIDDEN,
     ),
     parts=("main", "indicator", "knob"),
@@ -383,8 +407,18 @@ QRCODE = WidgetSpec(
 
 METER = WidgetSpec(
     type="meter", label="Indicador de aguja", default_size=(200, 200), id_prefix="meter",
-    description="Escalas, agujas y arcos (se edita en YAML)", category="Indicadores",
-    props=(*BOX[:2], HIDDEN),
+    description="Escalas, marcas, agujas y arcos", category="Indicadores",
+    initial_props=(("scales", [{
+        "range_from": 0, "range_to": 100, "angle_range": 270, "rotation": 135,
+        "ticks": {"count": 21, "width": 2, "length": 10, "color": "#9E9E9E",
+                  "major": {"stride": 5, "width": 4, "length": 16, "color": "#616161", "label_gap": 10}},
+        "indicators": [
+            {"arc": {"color": "#4CAF50", "width": 4, "start_value": 0, "end_value": 60}},
+            {"arc": {"color": "#F44336", "width": 4, "start_value": 80, "end_value": 100}},
+            {"line": {"color": "#2196F3", "width": 4, "r_mod": -10, "value": 60}},
+        ]}]),),
+    props=(*BOX[:2], *GRADIENT(), HIDDEN),
+    parts=("main", "ticks", "indicator", "items"),
 )
 
 TABVIEW = WidgetSpec(

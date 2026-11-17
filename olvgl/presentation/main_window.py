@@ -7,7 +7,7 @@ import threading
 
 from PySide6.QtCore import QByteArray, QFileSystemWatcher, QObject, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import (QDockWidget, QFileDialog, QLabel, QMainWindow, QMenu,
+from PySide6.QtWidgets import (QDockWidget, QFileDialog, QInputDialog, QLabel, QMainWindow, QMenu,
                                QMessageBox, QToolBar)
 
 from olvgl import APP_NAME, __version__
@@ -45,6 +45,8 @@ SYNC_DELAY_MS = 800
 YAML_FILTER = "YAML de ESPHome (*.yaml *.yml)"
 ICON_SIZES = ((22, "Pequeños"), (28, "Medianos"), (32, "Grandes"), (40, "Muy grandes"))
 DEFAULT_ICON_SIZE = 32
+GRID_SIZES = (2, 4, 5, 8, 10, 16, 20, 25, 32, 50)
+GRID_MAX = 500
 AUTOSAVE_MS = 60_000
 
 
@@ -101,6 +103,9 @@ class MainWindow(QMainWindow):
         self.lbl_sync = QLabel()
         sb.addWidget(self.lbl_sel, 1)
         sb.addPermanentWidget(self.lbl_sync)
+        self.lbl_grid = QLabel()
+        self.lbl_grid.setToolTip(tr("Tamaño de la rejilla (Ver › Tamaño de la rejilla)"))
+        sb.addPermanentWidget(self.lbl_grid)
         sb.addPermanentWidget(self.lbl_cursor)
         sb.addPermanentWidget(self.lbl_zoom)
         self.view.zoom_changed.connect(lambda z: self.lbl_zoom.setText(f"{tr('Zoom')} {z * 100:.0f} %"))
@@ -341,6 +346,34 @@ class MainWindow(QMainWindow):
             self.icon_size_actions[px].setChecked(True)
         self.settings.set("toolbar_icon_size", px)
 
+    def set_grid_size(self, px: int) -> int:
+        """Ver › Tamaño de la rejilla: la rejilla dibujada y el ajuste al mover o redimensionar."""
+        px = max(1, min(GRID_MAX, int(px)))
+        self.vm.grid_size = px
+        acts = getattr(self, "grid_size_actions", {})
+        if px in acts:
+            acts[px].setChecked(True)
+            self.a_grid_custom.setText(tr("Personalizado…"))
+        elif hasattr(self, "a_grid_custom"):
+            self.a_grid_custom.setText(trf("Personalizado ({px} px)…", px=px))
+            self.a_grid_custom.setChecked(True)
+        if hasattr(self, "scene"):
+            self.scene.update()
+        self.settings.set("grid_size", px)
+        if hasattr(self, "lbl_grid"):
+            self.lbl_grid.setText(trf("Rejilla {px} px", px=px))
+        return px
+
+    def ask_grid_size(self, value: int | None = None) -> int:
+        """Tamaño de rejilla a medida (1–500 px)."""
+        if value is None:
+            value, ok = QInputDialog.getInt(self, tr("Tamaño de la rejilla"), tr("Separación de la rejilla (px):"),
+                                            self.vm.grid_size, 1, GRID_MAX, 1)
+            if not ok:
+                self.set_grid_size(self.vm.grid_size)       # deja marcada la opción que estaba
+                return self.vm.grid_size
+        return self.set_grid_size(value)
+
     def _build_menus(self) -> None:
         mb = self.menuBar()
         # ------------------------------------------------ Archivo
@@ -411,6 +444,23 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         for a in (self.a_grid, self.a_snap, self.a_outlines, self.a_toplayer_view):
             m.addAction(a)
+        gm = m.addMenu(action_icon("grid"), tr("Tamaño de la rejilla"))
+        self.grid_size_menu = gm
+        self.grid_size_group = QActionGroup(self)
+        self.grid_size_group.setExclusive(True)
+        self.grid_size_actions = {}
+        for px in GRID_SIZES:
+            a = gm.addAction(f"{px} px")
+            a.setCheckable(True)
+            a.setChecked(px == self.vm.grid_size)
+            a.triggered.connect(lambda _c=False, v=px: self.set_grid_size(v))
+            self.grid_size_group.addAction(a)
+            self.grid_size_actions[px] = a
+        gm.addSeparator()
+        self.a_grid_custom = gm.addAction(tr("Personalizado…"))
+        self.a_grid_custom.setCheckable(True)
+        self.a_grid_custom.triggered.connect(lambda _c=False: self.ask_grid_size())
+        self.grid_size_group.addAction(self.a_grid_custom)
         m.addSeparator()
         pm = m.addMenu(action_icon("panels"), tr("Paneles"))
         for d in (self.dock_palette, self.dock_tree, self.dock_props, self.dock_code, self.dock_comments):
@@ -825,8 +875,10 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         self.a_autosync.setChecked(bool(self.settings.get("autosync", True)))
-        grid = self.settings.get("grid_size", 10)
-        self.vm.grid_size = int(grid)
+        try:
+            self.set_grid_size(int(self.settings.get("grid_size", 10)))
+        except (TypeError, ValueError):
+            self.set_grid_size(10)
         self.vm.snap = bool(self.settings.get("snap", True))
         self.scene.show_grid = bool(self.settings.get("show_grid", True))
         self.a_snap.setChecked(self.vm.snap)

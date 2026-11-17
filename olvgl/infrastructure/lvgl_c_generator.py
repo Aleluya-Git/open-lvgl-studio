@@ -26,7 +26,8 @@ from olvgl.domain.values import display_text, is_tagged
 # --------------------------------------------------------------------------- tablas
 PART_C = {"main": "LV_PART_MAIN", "scrollbar": "LV_PART_SCROLLBAR", "indicator": "LV_PART_INDICATOR",
           "knob": "LV_PART_KNOB", "selected": "LV_PART_SELECTED", "items": "LV_PART_ITEMS",
-          "cursor": "LV_PART_CURSOR", "textarea_placeholder": "LV_PART_TEXTAREA_PLACEHOLDER"}
+          "cursor": "LV_PART_CURSOR", "textarea_placeholder": "LV_PART_TEXTAREA_PLACEHOLDER",
+          "ticks": "LV_PART_INDICATOR"}   # meter → lv_scale: las marcas principales y sus números
 STATE_C = {s: f"LV_STATE_{s.upper()}" for s in catalog.STATES}
 
 EVENT_C = {
@@ -107,7 +108,8 @@ CREATE = {"obj": "lv_obj_create", "label": "lv_label_create", "button": "lv_butt
           "spinbox": "lv_spinbox_create", "led": "lv_led_create", "spinner": "lv_spinner_create",
           "line": "lv_line_create", "qrcode": "lv_qrcode_create", "keyboard": "lv_keyboard_create",
           "buttonmatrix": "lv_buttonmatrix_create", "tabview": "lv_tabview_create",
-          "tileview": "lv_tileview_create", "canvas": "lv_canvas_create", "animimg": "lv_animimg_create"}
+          "tileview": "lv_tileview_create", "canvas": "lv_canvas_create", "animimg": "lv_animimg_create",
+          "meter": "lv_scale_create"}
 # propiedades que cada tipo trata aparte (no son estilos ni flags)
 HANDLED = {"text", "long_mode", "recolor", "src", "angle", "zoom", "value", "min_value", "max_value",
            "start_angle", "end_angle", "rotation", "mode", "adjustable", "change_rate", "start_value",
@@ -120,6 +122,9 @@ HANDLED = {"text", "long_mode", "recolor", "src", "angle", "zoom", "value", "min
            "flex_grow", "grid_cell_column_pos", "grid_cell_row_pos", "grid_cell_column_span",
            "grid_cell_row_span", "grid_cell_x_align", "grid_cell_y_align", "scrollbar_mode", "group",
            "scales", "pivot_x", "pivot_y", "offset_x", "offset_y", "antialias"}
+
+
+V93 = "#if LVGL_VERSION_MAJOR > 9 || (LVGL_VERSION_MAJOR == 9 && LVGL_VERSION_MINOR >= 3)"
 
 
 def c_str(s: Any) -> str:
@@ -669,8 +674,125 @@ class CGenerator:
             if pr.get("auto_start", True) is not False:
                 out.append(f"    lv_animimg_start({o});")
         elif t == "meter":
-            out.append(f"    /* meter: no existe en LVGL 9 (ESPHome lo emula); usa lv_scale. Escalas: "
-                       f"{c_comment(pr.get('scales', ''))[:200]} */")
+            self.meter(w, o, out)
+
+    def meter(self, w: Widget, o: str, out: list[str]) -> None:
+        """meter de ESPHome → lv_scale redonda de LVGL 9 (marcas, números, agujas y arcos como secciones)."""
+        from olvgl.domain import meter as mt
+        scales = mt.scales_of(w.props)
+        out.append("    /* meter → lv_scale (LVGL 9). Las escalas adicionales se crean encima, transparentes */")
+        for si, sc in enumerate(scales):
+            s = o
+            if si > 0:
+                s = f"{o}_scale{si + 1}"
+                self.globals.append(f"static lv_obj_t * {s};")
+                out.append(f"    {s} = lv_scale_create({o});")
+                out.append(f"    lv_obj_set_size({s}, lv_pct(100), lv_pct(100));")
+                out.append(f"    lv_obj_center({s});")
+                out.append(f"    lv_obj_set_style_bg_opa({s}, LV_OPA_TRANSP, LV_PART_MAIN);")
+            g = mt.scale_geo(sc)
+            ticks, major = mt.ticks_of(sc)
+            out.append(f"    lv_scale_set_mode({s}, LV_SCALE_MODE_ROUND_INNER);")
+            out.append(f"    lv_scale_set_range({s}, {int(g.range_from)}, {int(g.range_to)});")
+            out.append(f"    lv_scale_set_angle_range({s}, {int(g.angle_range)});")
+            out.append(f"    lv_scale_set_rotation({s}, {int(g.rotation)});")
+            out.append(f"    lv_scale_set_total_tick_count({s}, {int(mt.num(ticks.get('count'), 12))});")
+            out.append(f"    lv_scale_set_major_tick_every({s}, {int(mt.num(major.get('stride'), 3)) if major else 0});")
+            out.append(f"    lv_scale_set_label_show({s}, {'true' if major else 'false'});")
+            out.append(f"    lv_obj_set_style_arc_width({s}, 0, LV_PART_MAIN);   /* el meter no dibuja el arco de la escala */")
+            for spec_, part in ((ticks, "LV_PART_ITEMS"), (major, "LV_PART_INDICATOR")):
+                if not spec_:
+                    continue
+                ln = spec_.get("length")
+                if isinstance(ln, str) and ln.strip().endswith("%"):
+                    out.append(f"    lv_obj_set_style_length({s}, {self.coord(ln)}, {part});")
+                elif mt.num(ln, -1) >= 0:
+                    out.append(f"    lv_obj_set_style_length({s}, {int(mt.num(ln))}, {part});")
+                out.append(f"    lv_obj_set_style_line_width({s}, {int(mt.num(spec_.get('width'), 2))}, {part});")
+                c = self.color(spec_.get("color"))
+                if c:
+                    out.append(f"    lv_obj_set_style_line_color({s}, {c}, {part});")
+                if mt.num(spec_.get("radial_offset"), 0):
+                    out.append(V93)
+                    out.append(f"    lv_obj_set_style_radial_offset({s}, {int(mt.num(spec_['radial_offset']))}, {part});")
+                    out.append("#endif")
+            if major and mt.num(major.get("label_gap"), 0):
+                out.append(V93)
+                out.append(f"    lv_obj_set_style_pad_radial({s}, {-int(mt.num(major['label_gap']))}, LV_PART_INDICATOR);")
+                out.append("#endif")
+            need_layout = True
+            for ii, it in enumerate(sc.get("indicators") or []):
+                k = mt.indicator_kind(it)
+                if k is None:
+                    continue
+                kind, d = k
+                name = d.get("id") if isinstance(d.get("id"), str) else None
+                var = "ui_" + re.sub(r"[^A-Za-z0-9_]", "_", name) if name else f"{o}_{kind}{si + 1}_{ii + 1}"
+                if name:
+                    self.public.append(var)
+                if kind in ("line", "image"):
+                    if need_layout:
+                        out.append(f"    lv_obj_update_layout({s});")
+                        need_layout = False
+                    value = int(mt.num(d.get("value"), g.range_from))
+                    if kind == "line":
+                        if not name:
+                            self.globals.append(f"static lv_obj_t * {var};")
+                        out.append(f"    {var} = lv_line_create({s});")
+                        out.append(f"    lv_obj_set_style_line_width({var}, {int(mt.num(d.get('width'), 4))}, 0);")
+                        c = self.color(d.get("color"))
+                        if c:
+                            out.append(f"    lv_obj_set_style_line_color({var}, {c}, 0);")
+                        out.append(f"    lv_obj_set_style_line_rounded({var}, true, 0);")
+                        op = self.opa(d.get("opa"))
+                        if op:
+                            out.append(f"    lv_obj_set_style_line_opa({var}, {op}, 0);")
+                        rmod = int(mt.num(d.get("r_mod"), 0))
+                        out.append(f"    lv_scale_set_line_needle_value({s}, {var}, "
+                                   f"lv_obj_get_width({s}) / 2 + ({rmod}), {value});")
+                    else:
+                        if not name:
+                            self.globals.append(f"static lv_obj_t * {var};")
+                        out.append(f"    {var} = lv_image_create({s});")
+                        src = self.image(d.get("src"))
+                        if src:
+                            out.append(f"    lv_image_set_src({var}, {src});")
+                        out.append(f"    lv_image_set_pivot({var}, {int(mt.num(d.get('pivot_x'), 0))}, "
+                                   f"{int(mt.num(d.get('pivot_y'), 0))});")
+                        out.append(f"    lv_scale_set_image_needle_value({s}, {var}, {value});")
+                else:
+                    st = f"{var}_style"
+                    sec = f"{var}_section"
+                    self.globals.append(f"static lv_style_t {st};")
+                    self.globals.append(f"static lv_scale_section_t * {sec};")
+                    out.append(f"    lv_style_init(&{st});")
+                    if kind == "arc":
+                        c = self.color(d.get("color"))
+                        if c:
+                            out.append(f"    lv_style_set_arc_color(&{st}, {c});")
+                        out.append(f"    lv_style_set_arc_width(&{st}, {int(mt.num(d.get('width'), 4))});")
+                        op = self.opa(d.get("opa"))
+                        if op:
+                            out.append(f"    lv_style_set_arc_opa(&{st}, {op});")
+                        part = "LV_PART_MAIN"
+                        out.append(f"    lv_obj_set_style_arc_width({s}, 1, LV_PART_MAIN);   /* para que se vean las secciones */")
+                        out.append(f"    lv_obj_set_style_arc_opa({s}, LV_OPA_TRANSP, LV_PART_MAIN);")
+                    else:
+                        c = self.color(d.get("color_start"))
+                        if c:
+                            out.append(f"    lv_style_set_line_color(&{st}, {c});")
+                        if "width" in d:
+                            out.append(f"    lv_style_set_line_width(&{st}, {int(mt.num(d.get('width'), 2))});")
+                        part = "LV_PART_ITEMS"
+                        if d.get("color_end") not in (None, d.get("color_start")):
+                            self.warnings.append(f"{w.id}: el degradado de color de las marcas (color_start → color_end) "
+                                                 "no existe en lv_scale; se usa color_start")
+                    out.append(f"    {sec} = lv_scale_add_section({s});")
+                    out.append(f"    lv_scale_section_set_range({sec}, {int(mt.num(d.get('start_value'), g.range_from))}, "
+                               f"{int(mt.num(d.get('end_value'), g.range_to))});")
+                    out.append(f"    lv_scale_section_set_style({sec}, {part}, &{st});")
+                    if kind == "tick_style":
+                        out.append(f"    lv_scale_section_set_style({sec}, LV_PART_INDICATOR, &{st});")
 
     def widget(self, w: Widget, parent: str, out: list[str], parent_widget: Widget | None = None,
                index: int = 0) -> None:

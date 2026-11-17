@@ -17,6 +17,8 @@ Open LVGL Studio se ofrece con **licencia doble**. Elige la que te convenga:
 | **Pro** | Community + **importar y sincronizar YAML de ESPHome** + **extensión de VS Code** (vista previa, Live Sync, diagnósticos, exportar C desde el editor) |
 | **Enterprise** | Pro + **herramientas de IA** (generar páginas, refactorizar, extraer estilos, ids descriptivos) |
 
+> **Sistema de licencias desactivado.** Ahora mismo todas las funciones (incluidas las de Pro y Enterprise) están disponibles sin licencia. El código de licencias se conserva: se reactiva con `ENFORCE_DEFAULT = "1"` en `olvgl/application/licensing.py` o arrancando con `OLVGL_LICENSE_ENFORCE=1`.
+
 La edición la da un fichero de licencia firmado (Ayuda › Licencia). Las funciones de cada edición están en
 `olvgl/application/licensing.py` (`FEATURES`).
 

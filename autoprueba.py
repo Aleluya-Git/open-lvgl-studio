@@ -1524,6 +1524,249 @@ def gui_tests() -> None:
             lc.ENFORCE = False
             lc.EXTRA_PUBLIC_KEYS.clear()
 
+    # ======================================================= rejilla, degradados, estilos y meter
+    def widget_image(wid: str, w: int, h: int) -> QImage:
+        from olvgl.domain.layout import effective_props
+        from olvgl.presentation import render as rnd
+        img = QImage(w, h, QImage.Format.Format_ARGB32)
+        img.fill(QColor("#202024"))
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        m = vm.widget(wid)
+        rnd.paint_widget(p, m, QRectF(0, 0, w, h), effective_props(vm.project, m),
+                         rnd.RenderContext(vm.project, vm.resolve_path))
+        p.end()
+        return img
+
+    @check("Ver · Tamaño de la rejilla: menú, ajuste al mover y se recuerda (capturas/rejilla_*.png)")
+    def _():
+        from olvgl.presentation.main_window import GRID_SIZES
+        assert 5 in GRID_SIZES and 50 in GRID_SIZES
+        assert win.grid_size_menu.actions(), "falta Ver › Tamaño de la rejilla"
+        win.set_grid_size(20)
+        pump(80)
+        assert vm.grid_size == 20 and settings.get("grid_size") == 20
+        assert win.grid_size_actions[20].isChecked()
+        vm.snap = True
+        assert vm.snap_value(29) == 20 and vm.snap_value(31) == 40
+        win.grab().save(os.path.join(CAPTURES, "rejilla_20px.png"))
+        assert win.ask_grid_size(15) == 15 and "15" in win.a_grid_custom.text() and win.a_grid_custom.isChecked()
+        assert "15" in win.lbl_grid.text()
+        assert win.set_grid_size(100000) == 500 and win.set_grid_size(-3) == 1
+        win.set_grid_size(10)
+        pump(50)
+        win.grab().save(os.path.join(CAPTURES, "rejilla_10px.png"))
+        assert settings.get("grid_size") == 10
+
+    @check("Estilo · Degradados en botones, contenedores, barras, deslizadores y arcos (capturas/degradados.png)")
+    def _():
+        vm.new("Degradados", DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7B", 1024, 600))
+        btn = vm.add_widget("button", 40, 40, centered=False)
+        vm.set_prop([btn], "bg_color", "#FF0000")
+        vm.set_prop([btn], "bg_grad_color", "#0000FF")
+        vm.set_prop([btn], "bg_grad_dir", "VER")
+        img = widget_image(btn, 200, 80)
+        top, bottom = img.pixelColor(100, 6), img.pixelColor(100, 74)
+        assert top.red() > 180 and top.blue() < 90, top.name()
+        assert bottom.blue() > 180 and bottom.red() < 90, bottom.name()
+        vm.set_prop([btn], "bg_main_stop", 128)            # mitad de arriba lisa
+        assert widget_image(btn, 200, 80).pixelColor(100, 30).red() > 200
+        box = vm.add_widget("obj", 300, 40, centered=False)
+        for k, v in (("bg_color", "#FFEB3B"), ("bg_grad_color", "#4CAF50"), ("bg_grad_dir", "HOR")):
+            vm.set_prop([box], k, v)
+        im = widget_image(box, 200, 150)
+        assert im.pixelColor(8, 75).red() > 200 and im.pixelColor(192, 75).red() < 150
+        bar = vm.add_widget("bar", 40, 200, centered=False)
+        vm.set_prop([bar], "value", 100)
+        for k, v in (("indicator.bg_color", "#00FF00"), ("indicator.bg_grad_color", "#FF00FF"),
+                     ("indicator.bg_grad_dir", "HOR")):
+            vm.set_prop([bar], k, v)
+        im = widget_image(bar, 200, 20)
+        assert im.pixelColor(12, 10).green() > 180 and im.pixelColor(188, 10).red() > 180, \
+            (im.pixelColor(12, 10).name(), im.pixelColor(188, 10).name())
+        sld = vm.add_widget("slider", 40, 260, centered=False)
+        for k, v in (("indicator.bg_color", "#FFC107"), ("indicator.bg_grad_color", "#F44336"),
+                     ("indicator.bg_grad_dir", "HOR"), ("knob.bg_grad_color", "#2196F3"), ("knob.bg_grad_dir", "VER")):
+            vm.set_prop([sld], k, v)
+        arc = vm.add_widget("arc", 300, 200, centered=False)
+        for k, v in (("bg_color", "#263238"), ("bg_opa", "COVER"), ("bg_grad_color", "#000000"),
+                     ("bg_grad_dir", "VER"), ("knob.bg_grad_color", "#FFFFFF"), ("knob.bg_grad_dir", "VER")):
+            vm.set_prop([arc], k, v)
+        widget_image(arc, 150, 150)
+        from olvgl.infrastructure.esphome_generator import generate_yaml
+        y = generate_yaml(vm.project)
+        assert "bg_grad_color: 0x0000FF" in y and "bg_grad_dir: VER" in y and "bg_main_stop: 128" in y, y[:800]
+        vm.set_selection([])
+        pump(150)
+        page_image(vm.current_screen_id).save(os.path.join(CAPTURES, "degradados.png"))
+        vm.set_selection([sld])
+        win.props.rebuild()
+        pump(150)
+        assert "bg_grad_color" in win.props.style_editors
+        win.props.grab().save(os.path.join(CAPTURES, "degradados_panel.png"))
+        assert win._save_to(os.path.join(tmp, "degradados.olvgl"))
+
+    @check("Estilo · Todas las propiedades de estilo de LVGL en el panel (sombra, contorno, texto, arco, línea…)")
+    def _():
+        from olvgl.presentation.properties import STYLE_FIELDS
+        keys = {k for k, _l, _t in STYLE_FIELDS}
+        need = {"bg_grad_color", "bg_main_stop", "border_side", "border_opa", "outline_width", "outline_pad",
+                "shadow_ofs_x", "shadow_ofs_y", "shadow_spread", "shadow_opa", "text_letter_space",
+                "text_line_space", "text_decor", "text_font", "arc_rounded", "arc_opa", "line_dash_width",
+                "line_dash_gap", "pad_top", "pad_column", "image_recolor", "translate_x", "clip_corner"}
+        assert need <= keys, sorted(need - keys)
+        btn = vm.add_widget("button", 600, 40, centered=False)
+        for k, v in (("shadow_width", 20), ("shadow_ofs_y", 6), ("shadow_color", "#000000"), ("outline_width", 3),
+                     ("outline_pad", 2), ("text_decor", "UNDERLINE"), ("text_letter_space", 2)):
+            vm.set_prop([btn], k, v)
+        vm.set_selection([btn])
+        win.props.rebuild()
+        pump(150)
+        for k in need:
+            assert k in win.props.style_editors, k
+        heads = win.props.style_group_heads
+        assert {"Fondo", "Degradado", "Sombra", "Contorno", "Texto", "Arco", "Línea"} <= set(heads)
+        heads["Sombra"].setChecked(True)
+        pump(50)
+        win.props.grab().save(os.path.join(CAPTURES, "estilos_panel.png"))
+        widget_image(btn, 220, 90).save(os.path.join(CAPTURES, "estilos_sombra_contorno.png"))
+        assert win._save_to(os.path.join(tmp, "degradados.olvgl"))
+
+    @check("Indicador de aguja: escalas, marcas, números, agujas y arcos editables (capturas/meter_*.png)")
+    def _():
+        import math
+        from olvgl.domain import meter as mt
+        vm.new("Meter", DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7B", 1024, 600))
+        mid = vm.add_widget("meter", 100, 100, centered=False)
+        scales = mt.scales_of(vm.widget(mid).props)
+        assert scales and scales[0]["indicators"], "un meter nuevo debería traer escala y aguja"
+        img = widget_image(mid, 240, 240)
+        img.save(os.path.join(CAPTURES, "meter_nuevo.png"))
+        ang = math.radians(mt.scale_geo(scales[0]).angle(60))       # la aguja está en 60
+        px = img.pixelColor(int(120 + 60 * math.cos(ang)), int(120 + 60 * math.sin(ang)))
+        assert px.blue() > 150 and px.red() < 120, px.name()
+        vm.set_selection([mid])
+        win.props.rebuild()
+        pump(150)
+        win.props.grab().save(os.path.join(CAPTURES, "meter_panel.png"))
+        win.props.set_meter_value(mid, 0, 2, "line", "value", 90)
+        assert mt.first_value(vm.widget(mid).props) == 90
+        dlg = win.props.open_meter_editor(mid, show=False)
+        dlg.show()
+        pump(150)
+        n0 = len(dlg.scales[0]["indicators"])
+        for kind in mt.INDICATOR_TYPES:
+            dlg.add_indicator(kind)
+        dlg.tree.setCurrentItem(dlg.tree.topLevelItem(0))
+        pump(50)
+        assert dlg.selected() == ("scale", 0)
+        dlg.forms[0].set("range_to", 200)
+        dlg.changed()
+        pump(100)
+        dlg.grab().save(os.path.join(CAPTURES, "meter_editor.png"))
+        dlg.apply()
+        sc = mt.scales_of(vm.widget(mid).props)[0]
+        assert sc["range_to"] == 200 and len(sc["indicators"]) == n0 + 4
+        vm.undo()
+        assert mt.scales_of(vm.widget(mid).props)[0]["range_to"] == 100
+        dlg.close()
+        dlg.deleteLater()
+        from olvgl.infrastructure.lvgl_c_generator import generate_c
+        src = generate_c(vm.project).source
+        assert "lv_scale_create" in src and "lv_scale_set_line_needle_value" in src
+        widget_image(mid, 240, 240).save(os.path.join(CAPTURES, "meter_aguja_90.png"))
+        assert win._save_to(os.path.join(tmp, "meter.olvgl"))
+
+    @check("Licencias desactivadas: importar YAML, VS Code e IA disponibles sin licencia")
+    def _():
+        from olvgl.application import licensing as lc
+        assert lc.ENFORCE_DEFAULT == "0"
+        lc.remove()
+        saved = lc.ENFORCE
+        try:
+            lc.ENFORCE = os.environ.get("OLVGL_LICENSE_ENFORCE", lc.ENFORCE_DEFAULT) != "0"
+            assert not lc.ENFORCE
+            n0 = len(win.license_blocked)
+            assert win._require("importar_yaml") and win._require("vscode") and win._require("ia")
+            assert len(win.license_blocked) == n0
+            assert all(lc.has(f) for f in lc.FEATURES)
+        finally:
+            lc.ENFORCE = saved
+
+    @check("Copiar y pegar un widget sin id: el original sigue en su sitio y la copia se puede mover")
+    def _():
+        from olvgl.domain.model import Widget
+        vm.new("Copiar", DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7B", 1024, 600))
+        scr = vm.current_screen
+        orig = Widget("_obj_3", "obj", 100, 100, 120, 80, auto_id=True)
+        scr.widgets.append(orig)
+        vm.replace_project(vm.project)
+        pump(80)
+        vm.set_selection(["_obj_3"])
+        win.a_copy.trigger()
+        win.a_paste.trigger()
+        pump(120)
+        new = vm.selection[0]
+        assert new != "_obj_3", new
+        ids = [w.id for _s, w in vm.project.iter_widgets()]
+        assert len(ids) == len(set(ids)), ids
+        assert "_obj_3" in win.scene.items_by_id and new in win.scene.items_by_id
+        a, b = win.scene.items_by_id["_obj_3"], win.scene.items_by_id[new]
+        assert a is not b and a.isVisible() and a.pos().x() == 100
+        assert b.flags() & b.GraphicsItemFlag.ItemIsMovable
+        vm.set_selection([new])
+        vm.nudge(30, 0)
+        pump(80)
+        assert vm.widget(new).x == 140 and vm.widget("_obj_3").x == 100
+        assert win._save_to(os.path.join(tmp, "copiar.olvgl"))
+
+    @check("Árbol del proyecto: arrastrar para reordenar, meter en contenedores y cambiar de página (capturas/arbol_*.png)")
+    def _():
+        from PySide6.QtWidgets import QAbstractItemView
+        vm.new("Árbol", DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7B", 1024, 600))
+        p1 = vm.current_screen_id
+        a = vm.add_widget("button", 40, 40, centered=False)
+        box = vm.add_widget("obj", 300, 100, centered=False)
+        b = vm.add_widget("label", 60, 400, centered=False)
+        p2 = vm.add_screen("Segunda")
+        vm.set_current_screen(p1)
+        pump(150)
+        pt = win.tree
+        assert pt.tree.dragDropMode() == QAbstractItemView.DragDropMode.InternalMove
+        assert pt.tree.dragEnabled() and pt.tree.acceptDrops()
+        rect_a = vm.box(a).rect
+        # soltar «a» sobre el contenedor: pasa a ser su hijo y no se mueve en pantalla
+        assert pt.apply_drop([pt.item_for("widget", a)], pt.item_for("widget", box), "on")
+        pump(150)
+        assert [w.id for w in vm.widget(box).children] == [a]
+        assert (vm.box(a).rect.x, vm.box(a).rect.y) == (rect_a.x, rect_a.y)
+        assert pt.item_for("widget", a).parent() is pt.item_for("widget", box)
+        win.tree.grab().save(os.path.join(CAPTURES, "arbol_hijo.png"))
+        # sacarlo por encima de «b» (en el árbol, arriba = dibujado encima)
+        assert pt.apply_drop([pt.item_for("widget", a)], pt.item_for("widget", b), "above")
+        pump(150)
+        order = [w.id for w in vm.current_screen.widgets]
+        assert order.index(a) == order.index(b) + 1 and not vm.widget(box).children, order
+        # una etiqueta no admite hijos: «sobre» ella = encima en el orden
+        assert pt.plan_drop([pt.item_for("widget", box)], pt.item_for("widget", b), "on")[3] is None
+        # a otra página
+        assert pt.apply_drop([pt.item_for("widget", b)], pt.item_for("screen", p2), "on")
+        pump(150)
+        assert vm.project.locate(b).screen.id == p2 and vm.current_screen_id == p2
+        # reordenar páginas arrastrando
+        assert pt.apply_drop([pt.item_for("screen", p2)], pt.item_for("screen", p1), "above")
+        pump(150)
+        assert [s.id for s in vm.project.screens][:2] == [p2, p1]
+        for _i in range(4):
+            vm.undo()
+        pump(100)
+        assert [s.id for s in vm.project.screens][:2] == [p1, p2] and vm.project.locate(b).screen.id == p1
+        assert [w.id for w in vm.widget(box).children] == [a]
+        vm.undo()
+        assert not vm.widget(box).children
+        win.tree.grab().save(os.path.join(CAPTURES, "arbol_orden.png"))
+        assert win._save_to(os.path.join(tmp, "arbol.olvgl"))
+
     # ======================================================= interfaz: iconos, menús e idiomas
     @check("UI · Icono, logotipo e iconos de los widgets")
     def _():

@@ -15,9 +15,13 @@ Ediciones (licencia doble: GPL-3.0-or-later o comercial, ver LICENSING.md):
 - Pro: además, importar y sincronizar YAML de ESPHome y la extensión de VS Code.
 - Enterprise: además, las herramientas de IA.
 
-`has(feature)` dice si una función está disponible. `OLVGL_LICENSE_ENFORCE=0`
-desactiva las comprobaciones (desarrollo y pruebas); `OLVGL_LICENSE=ruta` usa
-un fichero de licencia compartido (p. ej. en la red de la empresa).
+`has(feature)` dice si una función está disponible.
+
+**Ahora mismo el sistema de licencias está DESACTIVADO**: todas las funciones
+están disponibles para todo el mundo. El código se conserva completo; para
+volver a activarlo basta con poner `ENFORCE_DEFAULT = "1"` (o arrancar con la
+variable de entorno `OLVGL_LICENSE_ENFORCE=1`). `OLVGL_LICENSE=ruta` usa un
+fichero de licencia compartido (p. ej. en la red de la empresa).
 """
 from __future__ import annotations
 
@@ -30,7 +34,9 @@ from dataclasses import dataclass, field
 
 from olvgl.domain import ed25519
 
-ENFORCE = os.environ.get("OLVGL_LICENSE_ENFORCE", "1") != "0"
+# "0" = licencias desactivadas (todo disponible); "1" = se exige la edición de cada función
+ENFORCE_DEFAULT = "0"
+ENFORCE = os.environ.get("OLVGL_LICENSE_ENFORCE", ENFORCE_DEFAULT) != "0"
 EDITIONS = ("community", "pro", "enterprise")
 EDITION_NAMES = {"community": "Community", "pro": "Pro", "enterprise": "Enterprise"}
 # función → edición mínima

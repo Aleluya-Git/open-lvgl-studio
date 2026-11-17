@@ -30,6 +30,39 @@ def widget_text(w: Widget) -> str:
     return text
 
 
+class DragTree(QTreeWidget):
+    """Árbol con arrastrar y soltar: el movimiento lo hace el modelo (ProjectTree.apply_drop),
+    no Qt, para que se pueda deshacer y se respeten las reglas de LVGL."""
+
+    def __init__(self, owner: "ProjectTree"):
+        super().__init__()
+        self.owner = owner
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+
+    def _position(self) -> str:
+        P = QAbstractItemView.DropIndicatorPosition
+        return {P.AboveItem: "above", P.BelowItem: "below", P.OnItem: "on"}.get(self.dropIndicatorPosition(),
+                                                                                "viewport")
+
+    def dragMoveEvent(self, event) -> None:
+        super().dragMoveEvent(event)
+        target = self.itemAt(event.position().toPoint())
+        if event.isAccepted() and self.owner.plan_drop(self.selectedItems(), target, self._position()) is None:
+            event.ignore()
+
+    def dropEvent(self, event) -> None:
+        target = self.itemAt(event.position().toPoint())
+        position = self._position()
+        items = self.selectedItems()
+        event.setDropAction(Qt.DropAction.IgnoreAction)
+        event.accept()
+        QTimer.singleShot(0, lambda: self.owner.apply_drop(items, target, position))
+
+
 class ProjectTree(QWidget):
     def __init__(self, vm: ProjectViewModel, parent=None):
         super().__init__(parent)
@@ -50,7 +83,9 @@ class ProjectTree(QWidget):
             bar.addWidget(b)
         bar.addStretch(1)
 
-        self.tree = QTreeWidget()
+        self.tree = DragTree(self)
+        self.tree.setToolTip(tr("Arrastra widgets para cambiar su orden o meterlos en otro contenedor "
+                                "(suéltalos sobre él) o en otra página"))
         self.tree.setHeaderHidden(True)
         self.tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.tree.itemSelectionChanged.connect(self._on_tree_selection)
@@ -99,6 +134,10 @@ class ProjectTree(QWidget):
                 child.setIcon(0, icon)
             child.setData(0, ROLE_KIND, "widget")
             child.setData(0, ROLE_ID, w.id)
+            flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled
+            if w.type in catalog.CONTAINER_TYPES or w.type in catalog.CHILD_LISTS:
+                flags |= Qt.ItemFlag.ItemIsDropEnabled
+            child.setFlags(flags)
             if w.auto_id:
                 child.setForeground(0, QColor("#9E9E9E"))
             parent.addChild(child)
@@ -118,6 +157,10 @@ class ProjectTree(QWidget):
                 top.setIcon(0, action_icon("layers" if s.id == TOP_LAYER_ID else "page"))
                 top.setData(0, ROLE_KIND, "screen")
                 top.setData(0, ROLE_ID, s.id)
+                flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDropEnabled
+                if s.id != TOP_LAYER_ID:
+                    flags |= Qt.ItemFlag.ItemIsDragEnabled
+                top.setFlags(flags)
                 if s.id == self.vm.current_screen_id:
                     top.setFont(0, ui_font(bold=True))
                 self.tree.addTopLevelItem(top)
@@ -186,6 +229,78 @@ class ProjectTree(QWidget):
         if QMessageBox.question(self, tr("Eliminar"), trf("¿Eliminar {what} y sus {n} widgets?", what=what, n=n)
                                 ) == QMessageBox.StandardButton.Yes:
             self.vm.remove_screen(s.id)
+
+    # ------------------------------------------------------------------ arrastrar y soltar
+    def item_for(self, kind: str, ident: str) -> QTreeWidgetItem | None:
+        if kind == "widget":
+            return self._items.get(ident)
+        for i in range(self.tree.topLevelItemCount()):
+            it = self.tree.topLevelItem(i)
+            if it.data(0, ROLE_ID) == ident:
+                return it
+        return None
+
+    def _screen_of(self, item: QTreeWidgetItem) -> str:
+        while item.parent() is not None:
+            item = item.parent()
+        return item.data(0, ROLE_ID)
+
+    def plan_drop(self, items: list[QTreeWidgetItem], target: QTreeWidgetItem | None, position: str):
+        """Qué hará soltar `items` en `target` («above», «below», «on» o «viewport»):
+        ("widgets", ids, pantalla, padre, ancla, detrás) · ("screen", id, desplazamiento) · None si no se puede."""
+        kinds = {i.data(0, ROLE_KIND) for i in items}
+        if not items or len(kinds) != 1:
+            return None
+        if kinds == {"screen"}:
+            sid = items[0].data(0, ROLE_ID)
+            if target is None or sid == TOP_LAYER_ID or len(items) != 1:
+                return None
+            tid = self._screen_of(target)
+            order = [s.id for s in self.vm.project.screens]
+            if tid not in order or sid not in order:
+                return None
+            i, t = order.index(sid), order.index(tid)
+            j = t if (target.parent() is None and position == "above") else t + 1   # antes o después de T
+            if j > i:
+                j -= 1
+            return ("screen", sid, j - i) if j != i else None
+        ids = [i.data(0, ROLE_ID) for i in items]
+        if target is None or position == "viewport":
+            sid, parent, anchor, after = self.vm.current_screen_id, None, None, True
+        elif target.data(0, ROLE_KIND) == "screen":
+            sid, parent, anchor, after = target.data(0, ROLE_ID), None, None, True
+        else:
+            tid = target.data(0, ROLE_ID)
+            if tid in ids:
+                return None
+            loc = self.vm.project.locate(tid)
+            if loc is None:
+                return None
+            sid = loc.screen.id
+            if position == "on" and all(self.vm.can_contain(tid, self.vm.project.widget(i).type) for i in ids):
+                parent, anchor, after = tid, None, True          # dentro, encima de sus hijos
+            else:
+                parent = loc.parent.id if loc.parent else None
+                natural = loc.parent is not None and loc.parent.type in catalog.CHILD_LISTS
+                # la lista se ve de arriba (encima) a abajo; las pestañas, en su orden
+                above = position != "below"
+                anchor, after = tid, (above != natural)
+        for wid in ids:
+            w = self.vm.project.widget(wid)
+            if w is None or not self.vm.can_contain(parent, w.type):
+                return None
+        return ("widgets", ids, sid, parent, anchor, after)
+
+    def apply_drop(self, items: list[QTreeWidgetItem], target: QTreeWidgetItem | None, position: str) -> bool:
+        plan = self.plan_drop(items, target, position)
+        if plan is None:
+            return False
+        if plan[0] == "screen":
+            _k, sid, delta = plan
+            self.vm.move_screen(sid, delta)
+            return True
+        _k, ids, sid, parent, anchor, after = plan
+        return bool(self.vm.move_widgets_to(ids, sid, parent, anchor, after))
 
     def _move(self, delta: int) -> None:
         self.vm.move_screen(self.vm.current_screen_id, delta)

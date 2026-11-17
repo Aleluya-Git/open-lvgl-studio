@@ -53,14 +53,50 @@ def fits_value(prop: catalog.PropSpec, v: Any) -> bool:
     return fits_editor(prop, v)
 
 
-# Propiedades del editor de estilo por parte y estado
-STYLE_FIELDS = (
-    ("bg_color", "Fondo", "color"), ("bg_opa", "Opacidad del fondo", "opa"),
-    ("border_color", "Color del borde", "color"), ("border_width", "Grosor del borde", "int"),
-    ("radius", "Radio", "int"), ("text_color", "Color del texto", "color"),
-    ("shadow_color", "Color de la sombra", "color"), ("shadow_width", "Sombra", "int"),
-    ("pad_all", "Relleno", "int"), ("opa", "Opacidad", "opa"),
+# Propiedades del editor de estilo por parte y estado, por grupos (todas las de estilo de ESPHome LVGL)
+# tipos: color, opa, int (0…1000), sint (−1000…1000), byte (0…255), bool, font, enum:A,B,C
+BORDER_SIDES = "FULL,NONE,TOP,BOTTOM,LEFT,RIGHT,INTERNAL"
+STYLE_GROUPS = (
+    ("Fondo", (("bg_color", "Fondo", "color"), ("bg_opa", "Opacidad del fondo", "opa"),
+               ("radius", "Radio", "int"), ("opa", "Opacidad", "opa"))),
+    ("Degradado", (("bg_grad_dir", "Dirección del degradado", "enum:NONE,HOR,VER"),
+                   ("bg_grad_color", "Color final del degradado", "color"),
+                   ("bg_main_stop", "Empieza en (0-255)", "byte"),
+                   ("bg_grad_stop", "Termina en (0-255)", "byte"))),
+    ("Borde", (("border_color", "Color del borde", "color"), ("border_width", "Grosor del borde", "int"),
+               ("border_opa", "Opacidad del borde", "opa"), ("border_side", "Lados del borde", "enum:" + BORDER_SIDES),
+               ("border_post", "Borde por encima de los hijos", "bool"))),
+    ("Contorno", (("outline_color", "Color del contorno", "color"), ("outline_width", "Grosor del contorno", "int"),
+                  ("outline_pad", "Separación del contorno", "int"), ("outline_opa", "Opacidad del contorno", "opa"))),
+    ("Sombra", (("shadow_color", "Color de la sombra", "color"), ("shadow_width", "Sombra", "int"),
+                ("shadow_ofs_x", "Desplazamiento X", "sint"), ("shadow_ofs_y", "Desplazamiento Y", "sint"),
+                ("shadow_spread", "Extensión", "sint"), ("shadow_opa", "Opacidad de la sombra", "opa"))),
+    ("Texto", (("text_color", "Color del texto", "color"), ("text_opa", "Opacidad del texto", "opa"),
+               ("text_font", "Fuente", "font"), ("text_align", "Alineación del texto", "enum:AUTO,LEFT,CENTER,RIGHT"),
+               ("text_letter_space", "Espacio entre letras", "sint"), ("text_line_space", "Espacio entre líneas", "sint"),
+               ("text_decor", "Decoración", "enum:NONE,UNDERLINE,STRIKETHROUGH"))),
+    ("Relleno", (("pad_all", "Relleno", "int"), ("pad_top", "Arriba", "int"), ("pad_bottom", "Abajo", "int"),
+                 ("pad_left", "Izquierda", "int"), ("pad_right", "Derecha", "int"),
+                 ("pad_row", "Entre filas", "int"), ("pad_column", "Entre columnas", "int"))),
+    ("Arco", (("arc_color", "Color del arco", "color"), ("arc_width", "Grosor del arco", "int"),
+              ("arc_opa", "Opacidad del arco", "opa"), ("arc_rounded", "Extremos redondeados", "bool"))),
+    ("Línea", (("line_color", "Color de la línea", "color"), ("line_width", "Grosor de la línea", "int"),
+               ("line_opa", "Opacidad de la línea", "opa"), ("line_rounded", "Extremos redondeados", "bool"),
+               ("line_dash_width", "Trazo (discontinua)", "int"), ("line_dash_gap", "Hueco (discontinua)", "int"))),
+    ("Imagen", (("image_recolor", "Teñir con color", "color"), ("image_recolor_opa", "Intensidad del tinte", "opa"),
+                ("bg_image_recolor", "Teñir la imagen de fondo", "color"),
+                ("bg_image_recolor_opa", "Intensidad del tinte de fondo", "opa"))),
+    ("Tamaño y posición", (("min_width", "Ancho mínimo", "int"), ("max_width", "Ancho máximo", "int"),
+                           ("min_height", "Alto mínimo", "int"), ("max_height", "Alto máximo", "int"),
+                           ("translate_x", "Desplazar X", "sint"), ("translate_y", "Desplazar Y", "sint"),
+                           ("transform_angle", "Giro (décimas de grado)", "sint"),
+                           ("clip_corner", "Recortar esquinas", "bool"))),
 )
+STYLE_FIELDS = tuple(f for _g, fields in STYLE_GROUPS for f in fields)
+# grupos abiertos al principio, según el tipo de widget (el resto se abre con un clic)
+STYLE_OPEN_BY_TYPE = {"arc": {"Arco"}, "spinner": {"Arco"}, "meter": {"Línea", "Texto"}, "line": {"Línea"},
+                      "label": {"Texto"}, "image": {"Imagen"}, "button": {"Texto"}}
+STYLE_OPEN_ALWAYS = {"Fondo", "Degradado", "Borde"}
 
 
 def style_path(part: str, state: str, key: str) -> str:
@@ -197,6 +233,8 @@ class YamlPropsEditor(QWidget):
 
 
 class PropertiesPanel(QScrollArea):
+    style_groups_open: dict[str, bool] = {}     # grupos del editor de estilo abiertos o cerrados por el usuario
+
     def __init__(self, vm: ProjectViewModel, parent=None):
         super().__init__(parent)
         self.vm = vm
@@ -619,6 +657,9 @@ class PropertiesPanel(QScrollArea):
 
         if sp.child_type:
             self._build_children_section(state, sp)
+        if model.type == "meter":
+            self._build_meter_section(state)
+            shown_keys.add("scales")
         self._build_style_section(state, sp)
         self._build_applied_styles(state)
         shown_keys.add("styles")
@@ -697,10 +738,10 @@ class PropertiesPanel(QScrollArea):
         sel.addWidget(QLabel(tr("Estado")))
         sel.addWidget(st, 1)
         lay.addLayout(sel)
-        form = QFormLayout()
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        lay.addLayout(form)
         local: list[Callable[[], None]] = []
+        self.style_part_combo, self.style_state_combo = part, st
+        self.style_editors: dict[str, QWidget] = {}
+        self.style_group_heads: dict[str, QToolButton] = {}
 
         def path(key: str) -> str:
             return style_path(part.currentData() or "main", st.currentData() or "", key)
@@ -712,71 +753,44 @@ class PropertiesPanel(QScrollArea):
         def put(key: str, v):
             self.vm.set_prop([state["id"]], path(key), v)
 
-        for key, label, kind in STYLE_FIELDS:
-            row = QWidget()
-            h = QHBoxLayout(row)
-            h.setContentsMargins(0, 0, 0, 0)
-            if kind == "color":
-                ed = ColorButton()
+        open_groups = STYLE_OPEN_ALWAYS | STYLE_OPEN_BY_TYPE.get(sp.type, set())
+        remembered: dict = PropertiesPanel.style_groups_open
+        for gname, fields in STYLE_GROUPS:
+            head = QToolButton()
+            head.setText(tr(gname))
+            head.setCheckable(True)
+            head.setChecked(remembered.get(gname, gname in open_groups))
+            head.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            head.setArrowType(Qt.ArrowType.DownArrow if head.isChecked() else Qt.ArrowType.RightArrow)
+            head.setStyleSheet("QToolButton { border: none; font-weight: bold; }")
+            body = QWidget()
+            form = QFormLayout(body)
+            form.setContentsMargins(12, 0, 0, 4)
+            form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+            body.setVisible(head.isChecked())
 
-                def pick(_c=False, key=key, label=label):
-                    c = QColorDialog.getColor(render.qcolor(get(key) or "#FFFFFF"), self, label)
-                    if c.isValid():
-                        put(key, c.name(QColor.NameFormat.HexRgb).upper())
-                ed.clicked.connect(pick)
-
-                def refresh(ed=ed, key=key):
-                    v = get(key)
-                    if v is None:
-                        ed.set_color("#455A64")
-                        ed.setText(tr("(heredado)"))
-                    elif isinstance(v, str) and not v.startswith("#"):
-                        ed.set_color(render.RenderContext(self.vm.project).color(v).name(
-                            QColor.NameFormat.HexRgb).upper())
-                        ed.setText(v)
-                    else:
-                        ed.set_color(str(v))
-            elif kind == "opa":
-                ed = QComboBox()
-                ed.addItem(tr("(heredado)"), None)
-                for o in catalog.OPA_OPTIONS:
-                    ed.addItem(o, o)
-                ed.activated.connect(self._guard(lambda i, ed=ed, key=key: put(key, ed.itemData(i))))
-
-                def refresh(ed=ed, key=key):
-                    v = get(key)
-                    i = ed.findData(v)
-                    if i < 0 and v is not None:
-                        ed.addItem(str(v), v)
-                        i = ed.count() - 1
-                    ed.blockSignals(True)
-                    ed.setCurrentIndex(max(0, i))
-                    ed.blockSignals(False)
-            else:
-                ed = QSpinBox()
-                ed.setRange(-1, 1000)
-                ed.setSpecialValueText(tr("(heredado)"))
-                ed.setKeyboardTracking(False)
-                ed.valueChanged.connect(self._guard(
-                    lambda v, key=key: put(key, None if v < 0 else v) if (None if v < 0 else v) != get(key)
-                    else None))
-
-                def refresh(ed=ed, key=key):
-                    v = get(key)
-                    val = v if isinstance(v, int) and not isinstance(v, bool) else -1
-                    ed.setEnabled(v is None or val >= 0)
-                    if ed.value() != val:
-                        ed.blockSignals(True)
-                        ed.setValue(val)
-                        ed.blockSignals(False)
-            clear = QToolButton()
-            clear.setText("×")
-            clear.setToolTip(tr("Quitar (usar el valor heredado)"))
-            clear.clicked.connect(lambda _c=False, key=key: get(key) is not None and put(key, None))
-            h.addWidget(ed, 1)
-            h.addWidget(clear)
-            form.addRow(tr(label), row)
-            local.append(refresh)
+            def toggled(on, head=head, body=body, gname=gname):
+                body.setVisible(on)
+                head.setArrowType(Qt.ArrowType.DownArrow if on else Qt.ArrowType.RightArrow)
+                PropertiesPanel.style_groups_open[gname] = on
+            head.toggled.connect(toggled)
+            lay.addWidget(head)
+            lay.addWidget(body)
+            self.style_group_heads[gname] = head
+            for key, label, kind in fields:
+                ed, refresh = self._style_field(key, label, kind, get, put)
+                row = QWidget()
+                h = QHBoxLayout(row)
+                h.setContentsMargins(0, 0, 0, 0)
+                clear = QToolButton()
+                clear.setText("×")
+                clear.setToolTip(tr("Quitar (usar el valor heredado)"))
+                clear.clicked.connect(lambda _c=False, key=key: get(key) is not None and put(key, None))
+                h.addWidget(ed, 1)
+                h.addWidget(clear)
+                form.addRow(tr(label), row)
+                local.append(refresh)
+                self.style_editors[key] = ed
 
         def refresh_all():
             for fn in local:
@@ -789,6 +803,141 @@ class PropertiesPanel(QScrollArea):
         hint.setStyleSheet("color: #888;")
         lay.addWidget(hint)
         self.layout_.addWidget(box)
+
+    # ================================================================ indicador de aguja
+    def _build_meter_section(self, state: dict) -> None:
+        from olvgl.domain import meter as mt
+        from olvgl.presentation.meter_ui import indicator_title
+        box = QGroupBox(tr("Escalas e indicadores"))
+        lay = QVBoxLayout(box)
+        info = QLabel()
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        quick = QFormLayout()
+        lay.addLayout(quick)
+        btn = QPushButton(tr("Editar escalas, marcas y agujas…"))
+        btn.clicked.connect(lambda: self.open_meter_editor(state["id"]))
+        lay.addWidget(btn)
+        self.layout_.addWidget(box)
+        m = self.vm.widget(state["id"])
+        scales = mt.scales_of(m.props) if m else []
+        n_ind = sum(len(s.get("indicators") or []) for s in scales)
+        info.setText(trf("{s} escalas · {i} indicadores", s=len(scales), i=n_ind) if scales
+                     else tr("Sin escalas: pulsa el botón para añadir escala, marcas y agujas."))
+        # valores de cada aguja/arco para ajustarlos rápido
+        for si, sc in enumerate(scales):
+            for ii, it in enumerate(sc.get("indicators") or []):
+                k = mt.indicator_kind(it)
+                if k is None:
+                    continue
+                kind, d = k
+                keys = ("value",) if kind in ("line", "image") else ("start_value", "end_value")
+                row = QWidget()
+                h = QHBoxLayout(row)
+                h.setContentsMargins(0, 0, 0, 0)
+                for key in keys:
+                    spin = QSpinBox()
+                    spin.setRange(-1_000_000, 1_000_000)
+                    spin.setKeyboardTracking(False)
+                    g = mt.scale_geo(sc)
+                    spin.setValue(int(mt.num(d.get(key), g.range_from if key != "end_value" else g.range_to)))
+                    spin.valueChanged.connect(self._guard(
+                        lambda v, si=si, ii=ii, kind=kind, key=key: self.set_meter_value(state["id"], si, ii, kind,
+                                                                                         key, v)))
+                    h.addWidget(spin)
+                quick.addRow(indicator_title(kind, {kk: vv for kk, vv in d.items() if kk == "id"}), row)
+
+    def set_meter_value(self, wid: str, si: int, ii: int, kind: str, key: str, value: int) -> None:
+        import copy
+        from olvgl.domain import meter as mt
+        m = self.vm.widget(wid)
+        if m is None:
+            return
+        scales = copy.deepcopy(mt.scales_of(m.props))
+        try:
+            scales[si]["indicators"][ii][kind][key] = value
+        except (IndexError, KeyError, TypeError):
+            return
+        self.vm.set_raw_prop([wid], "scales", scales)
+
+    def open_meter_editor(self, wid: str, show: bool = True):
+        from olvgl.presentation.meter_ui import MeterDialog
+        dlg = MeterDialog(self.vm, wid, self)
+        if show:
+            dlg.exec()
+        return dlg
+
+    def _style_field(self, key: str, label: str, kind: str, get, put):
+        """Editor de una propiedad de estilo (con «(heredado)» = sin fijar) y su función de refresco."""
+        if kind == "color":
+            ed = ColorButton()
+
+            def pick(_c=False):
+                c = QColorDialog.getColor(render.qcolor(get(key) or "#FFFFFF"), self, tr(label))
+                if c.isValid():
+                    put(key, c.name(QColor.NameFormat.HexRgb).upper())
+            ed.clicked.connect(pick)
+
+            def refresh():
+                v = get(key)
+                if v is None:
+                    ed.set_color("#455A64")
+                    ed.setText(tr("(heredado)"))
+                elif isinstance(v, str) and not v.startswith("#"):
+                    ed.set_color(render.RenderContext(self.vm.project).color(v).name(
+                        QColor.NameFormat.HexRgb).upper())
+                    ed.setText(v)
+                else:
+                    ed.set_color(str(v))
+            return ed, refresh
+        if kind in ("opa", "bool", "font") or kind.startswith("enum:"):
+            ed = QComboBox()
+            ed.addItem(tr("(heredado)"), None)
+            if kind == "opa":
+                opts = [(o, o) for o in catalog.OPA_OPTIONS]
+            elif kind == "bool":
+                opts = [(tr("Sí"), True), (tr("No"), False)]
+            elif kind == "font":
+                opts = [(f, f) for f in self.vm.font_ids()]
+            else:
+                opts = [(o, o) for o in kind[5:].split(",")]
+            for text, data in opts:
+                ed.addItem(text, data)
+            ed.activated.connect(self._guard(lambda i: put(key, ed.itemData(i))))
+
+            def refresh():
+                v = get(key)
+                i = 0 if v is None else next((j for j in range(1, ed.count())
+                                              if ed.itemData(j) == v and type(ed.itemData(j)) is type(v)), -1)
+                if i < 0:
+                    ed.addItem(str(v), v)
+                    i = ed.count() - 1
+                ed.blockSignals(True)
+                ed.setCurrentIndex(i)
+                ed.blockSignals(False)
+            return ed, refresh
+        lo, hi = {"sint": (-1000, 1000), "byte": (0, 255)}.get(kind, (0, 1000))
+        none = lo - 1                                  # el valor especial «(heredado)»
+        ed = QSpinBox()
+        ed.setRange(none, hi)
+        ed.setSpecialValueText(tr("(heredado)"))
+        ed.setKeyboardTracking(False)
+
+        def changed(v):
+            new = None if v == none else v
+            if new != get(key):
+                put(key, new)
+        ed.valueChanged.connect(self._guard(changed))
+
+        def refresh():
+            v = get(key)
+            val = int(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else none
+            ed.setEnabled(v is None or val != none)
+            if ed.value() != val:
+                ed.blockSignals(True)
+                ed.setValue(val)
+                ed.blockSignals(False)
+        return ed, refresh
 
     def _build_applied_styles(self, state: dict) -> None:
         styles = [st.id for st in self.vm.project.styles]

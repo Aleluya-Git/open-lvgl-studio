@@ -210,38 +210,107 @@ def part(eff: dict, name: str) -> dict:
     return sub if isinstance(sub, dict) and not is_tagged(sub) else {}
 
 
-def paint_box(p: QPainter, rect: QRectF, eff: dict, ctx: RenderContext) -> None:
-    """Fondo, borde y radio según bg_color/bg_opa, border_*, radius."""
+def _border_sides(v: Any) -> set[str]:
+    items = v if isinstance(v, list) else str(v or "FULL").replace("|", " ").split()
+    sides = {str(x).strip().upper() for x in items}
+    if "FULL" in sides:
+        return {"TOP", "BOTTOM", "LEFT", "RIGHT"}
+    return sides & {"TOP", "BOTTOM", "LEFT", "RIGHT"}
+
+
+def bg_brush(rect: QRectF, eff: dict, ctx: "RenderContext", opa: float,
+             grad_rect: QRectF | None = None) -> QBrush:
+    """Relleno de fondo: color liso o degradado bg_grad_* (HOR/VER con bg_main_stop/bg_grad_stop)."""
+    c = ctx.color(eff.get("bg_color"), "#FFFFFF")
+    c.setAlphaF(c.alphaF() * opa)
+    grad = eff.get("bg_grad_color")
+    direction = str(eff.get("bg_grad_dir", "NONE")).upper()
+    if grad is None or direction not in ("VER", "HOR"):
+        return QBrush(c)
+    from PySide6.QtGui import QLinearGradient
+    gr = grad_rect or rect
+    g = QLinearGradient(gr.topLeft(), gr.bottomLeft() if direction == "VER" else gr.topRight())
+    g2 = ctx.color(grad, "#FFFFFF")
+    g2.setAlphaF(g2.alphaF() * opa)
+    s0 = max(0.0, min(255.0, _num(eff.get("bg_main_stop"), 0))) / 255
+    s1 = max(0.0, min(255.0, _num(eff.get("bg_grad_stop"), 255))) / 255
+    if s1 < s0:
+        s0, s1 = s1, s0
+    s1 = max(s1, min(1.0, s0 + 1e-3))
+    g.setColorAt(0, c)
+    g.setColorAt(s0, c)
+    g.setColorAt(s1, g2)
+    g.setColorAt(1, g2)
+    return QBrush(g)
+
+
+def paint_shadow(p: QPainter, rect: QRectF, radius: float, eff: dict, ctx: "RenderContext") -> None:
+    sw = _num(eff.get("shadow_width"))
+    if sw <= 0:
+        return
+    sc = ctx.color(eff.get("shadow_color"), "#000000")
+    base = opa_to_float(eff.get("shadow_opa"), 1.0) * sc.alphaF()
+    if base <= 0:
+        return
+    spread = _num(eff.get("shadow_spread"))
+    ox = _num(eff.get("shadow_ofs_x", eff.get("shadow_offset_x")))
+    oy = _num(eff.get("shadow_ofs_y", eff.get("shadow_offset_y")))
+    core = rect.translated(ox, oy).adjusted(-spread, -spread, spread, spread)
+    steps = max(4, min(16, int(sw / 2)))
+    p.setPen(Qt.PenStyle.NoPen)
+    for i in range(steps):                     # aproximación del desenfoque: anillos cada vez más tenues
+        grow = sw / 2 * (i + 1) / steps
+        c = QColor(sc)
+        c.setAlphaF(base * 0.9 / steps * (1 - i / (steps + 1)) * 2)
+        p.setBrush(c)
+        r = core.adjusted(-grow, -grow, grow, grow)
+        rr = min(radius + grow, r.width() / 2, r.height() / 2)
+        p.drawRoundedRect(r, rr, rr)
+
+
+def paint_box(p: QPainter, rect: QRectF, eff: dict, ctx: RenderContext,
+              grad_rect: QRectF | None = None) -> None:
+    """Sombra, fondo (color o degradado), borde (con border_side) y contorno, con su radio."""
     radius = min(_num(eff.get("radius")), rect.width() / 2, rect.height() / 2)
     bg_opa = opa_to_float(eff.get("bg_opa"), 0.0 if "bg_color" not in eff else 1.0)
     bw = _num(eff.get("border_width"))
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    paint_shadow(p, rect, radius, eff, ctx)
     if bg_opa > 0 and "bg_color" in eff:
-        c = ctx.color(eff.get("bg_color"), "#FFFFFF")
-        c.setAlphaF(bg_opa)
-        grad = eff.get("bg_grad_color")
         p.setPen(Qt.PenStyle.NoPen)
-        if grad is not None and str(eff.get("bg_grad_dir", "NONE")).upper() in ("VER", "HOR"):
-            from PySide6.QtGui import QLinearGradient
-            vertical = str(eff.get("bg_grad_dir")).upper() == "VER"
-            g = QLinearGradient(rect.topLeft(), rect.bottomLeft() if vertical else rect.topRight())
-            g2 = ctx.color(grad, "#FFFFFF")
-            g2.setAlphaF(bg_opa)
-            g.setColorAt(0, c)
-            g.setColorAt(1, g2)
-            p.setBrush(QBrush(g))
-        else:
-            p.setBrush(QBrush(c))
+        p.setBrush(bg_brush(rect, eff, ctx, bg_opa, grad_rect))
         p.drawRoundedRect(rect, radius, radius)
     if bw > 0:
         bc = ctx.color(eff.get("border_color"), "#E0E0E0")
         bc.setAlphaF(opa_to_float(eff.get("border_opa"), 1.0) * bc.alphaF())
-        p.setPen(QPen(bc, bw))
-        p.setBrush(Qt.BrushStyle.NoBrush)
+        sides = _border_sides(eff.get("border_side"))
         inner = rect.adjusted(bw / 2, bw / 2, -bw / 2, -bw / 2)
-        r2 = max(0.0, radius - bw / 2)
-        p.drawRoundedRect(inner, r2, r2)
+        if len(sides) == 4:
+            p.setPen(QPen(bc, bw))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            r2 = max(0.0, radius - bw / 2)
+            p.drawRoundedRect(inner, r2, r2)
+        elif sides:
+            p.setPen(QPen(bc, bw, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
+            if "TOP" in sides:
+                p.drawLine(QPointF(rect.left(), inner.top()), QPointF(rect.right(), inner.top()))
+            if "BOTTOM" in sides:
+                p.drawLine(QPointF(rect.left(), inner.bottom()), QPointF(rect.right(), inner.bottom()))
+            if "LEFT" in sides:
+                p.drawLine(QPointF(inner.left(), rect.top()), QPointF(inner.left(), rect.bottom()))
+            if "RIGHT" in sides:
+                p.drawLine(QPointF(inner.right(), rect.top()), QPointF(inner.right(), rect.bottom()))
+    ow = _num(eff.get("outline_width"))
+    if ow > 0:
+        oc = ctx.color(eff.get("outline_color"), catalog.LV_PRIMARY)
+        oc.setAlphaF(opa_to_float(eff.get("outline_opa"), 1.0) * oc.alphaF())
+        pad = _num(eff.get("outline_pad")) + ow / 2
+        p.setPen(QPen(oc, ow))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        orr = rect.adjusted(-pad, -pad, pad, pad)
+        r3 = radius + pad if radius > 0 else 0
+        p.drawRoundedRect(orr, r3, r3)
     p.restore()
 
 
@@ -256,7 +325,16 @@ def content_rect(rect: QRectF, eff: dict) -> QRectF:
 def paint_text(p: QPainter, rect: QRectF, text: str, eff: dict, ctx: RenderContext,
                v_center: bool = False, default_color: str = catalog.LV_TEXT) -> None:
     p.save()
-    p.setFont(ctx.font(eff.get("text_font")))
+    font = QFont(ctx.font(eff.get("text_font")))
+    ls = _num(eff.get("text_letter_space"))
+    if ls:
+        font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, ls)
+    decor = str(eff.get("text_decor") or "").upper()
+    if "UNDERLINE" in decor:
+        font.setUnderline(True)
+    if "STRIKETHROUGH" in decor:
+        font.setStrikeOut(True)
+    p.setFont(font)
     color = ctx.color(eff.get("text_color"), default_color)
     color.setAlphaF(color.alphaF() * opa_to_float(eff.get("text_opa"), 1.0))
     p.setPen(color)
@@ -400,7 +478,7 @@ def paint_widget(p: QPainter, w: Widget, rect: QRectF, eff: dict, ctx: RenderCon
             _paint_qrcode(p, rect, w, eff, ctx)
         elif t == "meter":
             paint_box(p, rect, eff, ctx)
-            _paint_meter(p, rect, ctx)
+            paint_meter(p, rect, w, eff, ctx)
         elif t == "animimg":
             srcs = w.props.get("src")
             path = ctx.image_path(srcs[0]) if isinstance(srcs, list) and srcs else None
@@ -531,22 +609,136 @@ def _paint_qrcode(p: QPainter, rect: QRectF, w: Widget, eff: dict, ctx: RenderCo
     p.restore()
 
 
-def _paint_meter(p: QPainter, rect: QRectF, ctx: RenderContext) -> None:
+def _mix(c0: QColor, c1: QColor, t: float) -> QColor:
+    t = max(0.0, min(1.0, t))
+    return QColor.fromRgbF(c0.redF() + (c1.redF() - c0.redF()) * t, c0.greenF() + (c1.greenF() - c0.greenF()) * t,
+                           c0.blueF() + (c1.blueF() - c0.blueF()) * t, c0.alphaF() + (c1.alphaF() - c0.alphaF()) * t)
+
+
+def _fmt_tick(v: float) -> str:
+    return str(int(round(v))) if abs(v - round(v)) < 1e-6 else f"{v:.1f}"
+
+
+def paint_meter(p: QPainter, rect: QRectF, w: Widget, eff: dict, ctx: RenderContext) -> None:
+    """Indicador de aguja como LVGL: escalas con marcas y números, arcos, agujas de línea o imagen."""
     import math
-    size = min(rect.width(), rect.height())
-    c = QPointF(rect.center().x(), rect.center().y())
-    r = size / 2 - 10
+    from olvgl.domain import meter as mt
+    cr = content_rect(rect, eff) if any(k in eff for k in ("pad_all", "pad_left", "pad_top")) else rect
+    c = QPointF(cr.center().x(), cr.center().y())
+    r_edge = max(4.0, min(cr.width(), cr.height()) / 2)
+    tick_part = part(eff, "ticks")
+    ind_part = part(eff, "indicator")
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    p.setPen(QPen(QColor("#9E9E9E"), 2))
-    for i in range(21):
-        a = math.radians(135 + 270 * i / 20)
-        r1 = r - (10 if i % 5 == 0 else 5)
-        p.drawLine(QPointF(c.x() + r * math.cos(a), c.y() + r * math.sin(a)),
-                   QPointF(c.x() + r1 * math.cos(a), c.y() + r1 * math.sin(a)))
-    a = math.radians(135 + 270 * 0.6)
-    p.setPen(QPen(QColor(catalog.LV_PRIMARY), 4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-    p.drawLine(c, QPointF(c.x() + (r - 15) * math.cos(a), c.y() + (r - 15) * math.sin(a)))
+
+    def pt(angle_deg: float, radius: float) -> QPointF:
+        a = math.radians(angle_deg)
+        return QPointF(c.x() + radius * math.cos(a), c.y() + radius * math.sin(a))
+
+    def opa_color(value: Any, default: str, opa: Any = None) -> QColor:
+        col = ctx.color(value, default)
+        col.setAlphaF(col.alphaF() * opa_to_float(opa, 1.0))
+        return col
+
+    font = QFont(ctx.font(tick_part.get("text_font", eff.get("text_font"))))
+    text_color = ctx.color(tick_part.get("text_color", eff.get("text_color")), catalog.LV_TEXT)
+    needles = 0
+    for scale in mt.scales_of(w.props):
+        g = mt.scale_geo(scale)
+        ticks, major = mt.ticks_of(scale)
+        items = [k for k in (mt.indicator_kind(i) for i in (scale.get("indicators") or [])) if k]
+        styles = [d for k, d in items if k == "tick_style"]
+
+        def draw_ticks() -> None:
+            for value, is_major in mt.tick_values(scale):
+                spec_ = major if is_major and major else ticks
+                ln = mt.length(spec_.get("length"), r_edge, 10)
+                off = mt.num(spec_.get("radial_offset"), 0)
+                width = mt.num(spec_.get("width"), 2)
+                col = opa_color(spec_.get("color"), "#808080")
+                for st in styles:                      # tick_style: color (y grosor) en un rango de valores
+                    lo = mt.num(st.get("start_value"), g.range_from)
+                    hi = mt.num(st.get("end_value"), g.range_to)
+                    if min(lo, hi) <= value <= max(lo, hi):
+                        c0 = ctx.color(st.get("color_start"), "#000000")
+                        c1 = ctx.color(st.get("color_end", st.get("color_start")), "#000000")
+                        if st.get("local"):
+                            t = (value - lo) / (hi - lo) if hi != lo else 0
+                        else:
+                            t = g.ratio(value)
+                        col = _mix(c0, c1, t)
+                        if "width" in st:
+                            width = mt.num(st.get("width"), width) + (2 if is_major else 0)
+                ang = g.angle(value)
+                p.setPen(QPen(col, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
+                p.drawLine(pt(ang, r_edge - off), pt(ang, r_edge - off - ln))
+                if is_major and major:
+                    gap = mt.num(major.get("label_gap"), 4)
+                    txt = _fmt_tick(value)
+                    p.setFont(font)
+                    fm = QFontMetricsF(font)
+                    tw, th = fm.horizontalAdvance(txt), fm.height()
+                    rr = r_edge - off - ln - gap - max(tw, th) / 2
+                    q = pt(ang, rr)
+                    p.setPen(text_color)
+                    p.drawText(QRectF(q.x() - tw / 2 - 2, q.y() - th / 2, tw + 4, th), Qt.AlignmentFlag.AlignCenter, txt)
+
+        if not scale.get("draw_ticks_on_top"):
+            draw_ticks()
+        for kind, d in items:
+            if kind == "arc":
+                width = mt.num(d.get("width"), 4)
+                rad = r_edge + mt.num(d.get("r_mod"), 0) - width / 2
+                a0 = g.angle(d.get("start_value", g.range_from))
+                a1 = g.angle(d.get("end_value", g.range_to))
+                if a1 < a0:
+                    a0, a1 = a1, a0
+                if a1 - a0 <= 0 or rad <= 0:
+                    continue
+                ar = QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad)
+                path = QPainterPath()
+                path.arcMoveTo(ar, -a0)
+                path.arcTo(ar, -a0, -(a1 - a0))
+                cap = Qt.PenCapStyle.RoundCap if d.get("rounded") else Qt.PenCapStyle.FlatCap
+                p.setPen(QPen(opa_color(d.get("color"), "#000000", d.get("opa")), width, Qt.PenStyle.SolidLine, cap))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawPath(path)
+            elif kind == "line":
+                needles += 1
+                width = mt.num(d.get("width"), 4)
+                ln = mt.length(d["length"], r_edge, r_edge) if "length" in d else r_edge + mt.num(d.get("r_mod"), 0)
+                ang = g.angle(d.get("value", g.range_from))
+                pen = QPen(opa_color(d.get("color"), "#000000", d.get("opa")), width, Qt.PenStyle.SolidLine,
+                           Qt.PenCapStyle.RoundCap if d.get("rounded", True) is not False else Qt.PenCapStyle.FlatCap)
+                dw, dg = mt.num(d.get("dash_width"), 0), mt.num(d.get("dash_gap"), 0)
+                if dw > 0 and dg > 0 and width > 0:
+                    pen.setDashPattern([dw / width, dg / width])
+                p.setPen(pen)
+                p.drawLine(c, pt(ang, max(0.0, ln)))
+            elif kind == "image":
+                needles += 1
+                path_ = ctx.image_path(d.get("src"))
+                pm = load_pixmap(path_) if path_ else None
+                ang = g.angle(d.get("value", g.range_from))
+                p.save()
+                p.translate(c)
+                p.rotate(ang)
+                p.setOpacity(p.opacity() * opa_to_float(d.get("opa"), 1.0))
+                px, py = mt.num(d.get("pivot_x"), 0), mt.num(d.get("pivot_y"), 0)
+                if pm is not None:
+                    p.drawPixmap(QPointF(-px, -py), pm)
+                else:
+                    p.setPen(QPen(QColor("#9E9E9E"), 3, Qt.PenStyle.DashLine, Qt.PenCapStyle.RoundCap))
+                    p.drawLine(QPointF(0, 0), QPointF(r_edge * 0.8, 0))
+                p.restore()
+        if scale.get("draw_ticks_on_top"):
+            draw_ticks()
+    if needles:
+        # el eje de la aguja (parte «indicator» del meter)
+        d = mt.num(ind_part.get("width"), 15) if "width" in ind_part else 15
+        dot = dict({"bg_color": catalog.LV_TEXT, "bg_opa": "COVER", "radius": 1000},
+                   **{k: v for k, v in ind_part.items() if not isinstance(v, (dict, list))})
+        paint_box(p, QRectF(c.x() - d / 2, c.y() - d / 2, d, d), dot, ctx)
     p.restore()
 
 
@@ -587,19 +779,20 @@ def _paint_slider(p: QPainter, rect: QRectF, w: Widget, eff: dict, ctx: RenderCo
         ir = QRectF(rect.x(), rect.bottom() - rect.height() * ratio, rect.width(), rect.height() * ratio)
     else:
         ir = QRectF(rect.x(), rect.y(), rect.width() * ratio, rect.height())
-    ieff = {"bg_color": ind.get("bg_color", catalog.LV_PRIMARY), "bg_opa": ind.get("bg_opa", "COVER"),
-            "radius": ind.get("radius", eff.get("radius", 1000))}
+    ieff = dict({"bg_color": catalog.LV_PRIMARY, "bg_opa": "COVER", "radius": eff.get("radius", 1000)},
+                **{k: v for k, v in ind.items() if not isinstance(v, (dict, list))})
     if ratio > 0:
-        paint_box(p, ir, ieff, ctx)
+        # como LVGL: el degradado del indicador ocupa la barra entera y se ve la parte del valor
+        paint_box(p, ir, ieff, ctx, grad_rect=rect)
     if knob:
         k = part(eff, "knob")
         d = min(rect.width(), rect.height()) + 10
         cx = ir.right() if not vertical else rect.center().x()
         cy = rect.center().y() if not vertical else ir.top()
         kr = QRectF(cx - d / 2, cy - d / 2, d, d)
-        paint_box(p, kr, {"bg_color": k.get("bg_color", "#FFFFFF"), "bg_opa": "COVER", "radius": 1000,
-                          "border_width": k.get("border_width", 2),
-                          "border_color": k.get("border_color", catalog.LV_PRIMARY)}, ctx)
+        paint_box(p, kr, dict({"bg_color": "#FFFFFF", "bg_opa": "COVER", "radius": 1000, "border_width": 2,
+                               "border_color": catalog.LV_PRIMARY},
+                              **{k2: v for k2, v in k.items() if not isinstance(v, (dict, list))}), ctx)
 
 
 def _paint_switch(p: QPainter, rect: QRectF, eff: dict, ctx: RenderContext, checked: bool) -> None:
@@ -608,13 +801,17 @@ def _paint_switch(p: QPainter, rect: QRectF, eff: dict, ctx: RenderContext, chec
     if checked:
         track["bg_color"] = ind.get("bg_color", catalog.LV_PRIMARY)
         track["bg_opa"] = "COVER"
+        for k in ("bg_grad_color", "bg_grad_dir", "bg_main_stop", "bg_grad_stop"):
+            if k in ind:
+                track[k] = ind[k]
     paint_box(p, rect, track, ctx)
     pad = 3
     d = rect.height() - 2 * pad
     x = rect.right() - pad - d if checked else rect.x() + pad
     knob = part(eff, "knob")
     paint_box(p, QRectF(x, rect.y() + pad, d, d),
-              {"bg_color": knob.get("bg_color", "#FFFFFF"), "bg_opa": "COVER", "radius": 1000}, ctx)
+              dict({"bg_color": "#FFFFFF", "bg_opa": "COVER", "radius": 1000},
+                   **{k: v for k, v in knob.items() if not isinstance(v, (dict, list))}), ctx)
 
 
 def _arc_path(rect: QRectF, start: float, end: float) -> tuple[float, float]:
@@ -631,39 +828,46 @@ def _paint_arc(p: QPainter, rect: QRectF, eff: dict, ctx: RenderContext, spinner
     rot = _num(eff.get("rotation"), 0)
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    cap = Qt.PenCapStyle.RoundCap
+    if "bg_opa" in eff and opa_to_float(eff.get("bg_opa"), 0) > 0:
+        paint_box(p, rect, eff, ctx)       # caja de fondo del arco (admite degradado)
+    ind = part(eff, "indicator")
+    cap = Qt.PenCapStyle.RoundCap if eff.get("arc_rounded", True) is not False else Qt.PenCapStyle.FlatCap
 
-    def arc(color: QColor, a0: float, a1: float) -> None:
+    def arc(color: QColor, a0: float, a1: float, w: float | None = None) -> None:
+        width_ = width if w is None else w
         start, span = _arc_path(ar, a0 + rot, a1 + rot)
         if span == 0:
             return
         path = QPainterPath()
         path.arcMoveTo(ar, start)
         path.arcTo(ar, start, span)
-        p.setPen(QPen(color, width, Qt.PenStyle.SolidLine, cap))
+        p.setPen(QPen(color, width_, Qt.PenStyle.SolidLine, cap))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(path)
 
-    bg0 = _num(eff.get("bg_start_angle"), 0 if spinner else 135)
-    bg1 = _num(eff.get("bg_end_angle"), 360 if spinner else 45)
-    arc(ctx.color(eff.get("arc_color"), "#E0E0E0"), bg0, bg1)
-    ind = part(eff, "indicator")
+    bg0 = _num(eff.get("bg_start_angle", eff.get("start_angle")), 0 if spinner else 135)
+    bg1 = _num(eff.get("bg_end_angle", eff.get("end_angle")), 360 if spinner else 45)
+    bgc = ctx.color(eff.get("arc_color"), "#E0E0E0")
+    bgc.setAlphaF(bgc.alphaF() * opa_to_float(eff.get("arc_opa"), 1.0))
+    arc(bgc, bg0, bg1)
     icolor = ctx.color(ind.get("arc_color"), catalog.LV_PRIMARY)
+    icolor.setAlphaF(icolor.alphaF() * opa_to_float(ind.get("arc_opa"), 1.0))
+    iw = _num(ind.get("arc_width"), width) if "arc_width" in ind else None
     if spinner:
-        arc(icolor, 270, 330)
+        arc(icolor, 270, 330, iw)
     else:
         span = (bg1 - bg0) % 360 or 360
-        arc(icolor, bg0, bg0 + span * _value_ratio(eff))
+        arc(icolor, bg0, bg0 + span * _value_ratio(eff), iw)
         k = part(eff, "knob")
         if k or eff.get("adjustable", True):
             import math
             ang = math.radians(bg0 + rot + span * _value_ratio(eff))
             cx = ar.center().x() + ar.width() / 2 * math.cos(ang)
             cy = ar.center().y() + ar.height() / 2 * math.sin(ang)
-            d = width + 6
+            d = width + 6 + 2 * _num(k.get("pad_all"), 0)
             paint_box(p, QRectF(cx - d / 2, cy - d / 2, d, d),
-                      {"bg_color": k.get("bg_color", catalog.LV_PRIMARY), "bg_opa": "COVER",
-                       "radius": 1000}, ctx)
+                      dict({"bg_color": catalog.LV_PRIMARY, "bg_opa": "COVER", "radius": 1000},
+                           **{k2: v for k2, v in k.items() if not isinstance(v, (dict, list))}), ctx)
     p.restore()
 
 

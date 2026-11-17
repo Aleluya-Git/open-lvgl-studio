@@ -2,7 +2,7 @@
 
 Diseñador visual de interfaces **LVGL para ESPHome**: dibujas la pantalla y obtienes el YAML listo para tu dispositivo.
 
-Versión **0.10.0b1 — beta pública con funciones Enterprise** (Fases 0 a 10: versiones visuales, colaboración en carpetas compartidas, marketplace de componentes y licencias; pruebas masivas, informes de error y paquete de la beta; IA generativa, SDK de plugins, simulador profesional, extensión de VS Code, MVP, importación de YAML existente, sincronización bidireccional con el YAML, todos los widgets de LVGL con estilos, temas y eventos avanzados, y generador de código C para LVGL 9).
+Versión **0.10.0b2 — beta pública con funciones Enterprise** (Fases 0 a 10: versiones visuales, colaboración en carpetas compartidas, marketplace de componentes y licencias; pruebas masivas, informes de error y paquete de la beta; IA generativa, SDK de plugins, simulador profesional, extensión de VS Code, MVP, importación de YAML existente, sincronización bidireccional con el YAML, todos los widgets de LVGL con estilos, temas y eventos avanzados, y generador de código C para LVGL 9).
 
 ## Instalación (Windows)
 
@@ -18,7 +18,8 @@ Guía de usuario: [`docs/GUIA_USUARIO.md`](docs/GUIA_USUARIO.md) (también en **
 - **Versiones** (Ctrl+Alt+V): instantáneas con nombre e historial de Git, comparadas visualmente con el proyecto actual (añadido/eliminado/cambiado) y restaurables.
 - **Colaboración** en una carpeta compartida: fusión automática al guardar si otra persona guardó antes, quién más lo tiene abierto y **comentarios** de revisión sobre los widgets (Ctrl+Alt+C).
 - **Componentes** (Ctrl+Alt+K): guarda una selección como componente, instálalos desde un catálogo (local o URL, verificados con SHA-256) e insértalos con ids únicos.
-- **Licencia** (Ayuda): ediciones Community/Pro/Enterprise con licencias firmadas (Ed25519) y licencias de terceros.
+- **Licencia** (Ayuda): ediciones Community/Pro/Enterprise con licencias firmadas (Ed25519) y licencias de terceros (las comprobaciones están desactivadas: todo está disponible).
+- **Estilo completo**: degradados (botones, contenedores, barras, deslizadores, arcos), sombra, contorno, texto, relleno, arco, línea…; indicador de aguja con escalas, marcas, agujas y arcos editables; tamaño de rejilla ajustable.
 
 Detalles en [`docs/13_enterprise.md`](docs/13_enterprise.md).
 
@@ -152,5 +153,7 @@ Licencia doble: **GPL-3.0-or-later** ([`LICENSE`](LICENSE)) o **comercial** ([`C
 - **Community** (gratis): el diseñador completo, simulador, exportar ESPHome y C, plugins, versiones, colaboración y componentes.
 - **Pro**: además importar y sincronizar YAML de ESPHome y la extensión de VS Code.
 - **Enterprise**: además las herramientas de IA.
+
+> **Sistema de licencias desactivado.** Ahora mismo todas las funciones (incluidas las de Pro y Enterprise) están disponibles sin licencia. El código de licencias se conserva: se reactiva con `ENFORCE_DEFAULT = "1"` en `olvgl/application/licensing.py` o arrancando con `OLVGL_LICENSE_ENFORCE=1`.
 
 Detalles en [`LICENSING.md`](LICENSING.md). Lo que generas (YAML, C, proyectos) es tuyo.

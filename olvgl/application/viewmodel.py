@@ -160,7 +160,24 @@ class ProjectViewModel:
         self._layout_cache: dict[str, tuple[int, dict[str, Box]]] = {}
 
     # ================================================================ proyecto
+    @staticmethod
+    def repair_duplicate_auto_ids(project: Project) -> int:
+        """Da un id nuevo a los widgets sin id propio que comparten id automático con otro
+        (proyectos guardados con el fallo de copiar y pegar de la 0.10.0b1)."""
+        seen: set[str] = set()
+        dups = []
+        for _s, w in project.iter_widgets():
+            if w.id in seen and w.auto_id:
+                dups.append(w)
+            seen.add(w.id)
+        for w in dups:
+            taken = seen | {i[1:] for i in seen if i.startswith("_")}
+            w.id = "_" + unique_id(w.id.lstrip("_"), taken)
+            seen.add(w.id)
+        return len(dups)
+
     def replace_project(self, project: Project, path: str | None = None) -> None:
+        self.repair_duplicate_auto_ids(project)
         self.project = project
         self.path = path
         self.history.clear()
@@ -659,8 +676,13 @@ class ProjectViewModel:
         for d in dicts:
             w = Widget.from_dict(d)
             for node in w.walk():
-                base = node.id.lstrip("_") if node.auto_id else node.id
-                node.id = unique_id(base, existing) if not node.auto_id else f"_{unique_id(base, existing)}"
+                if node.auto_id:
+                    # los ids automáticos llevan «_» delante: se busca uno libre con ese prefijo
+                    # (antes «_obj_3» se copiaba como «_obj_3» y dos widgets compartían id)
+                    taken = existing | {i[1:] for i in existing if i.startswith("_")}
+                    node.id = "_" + unique_id(node.id.lstrip("_"), taken)
+                else:
+                    node.id = unique_id(node.id, existing)
                 existing.add(node.id)
                 existing.add(f"{node.id}_label")
             if isinstance(w.x, (int, float)) and not isinstance(w.x, bool):
@@ -970,6 +992,96 @@ class ProjectViewModel:
                 deltas[w.id] = (0, round(pos) - r.y)
                 pos += r.h + gap
         self.move_by(deltas, label="Distribuir")
+
+    # ---------------------------------------------------------------- mover en el árbol (arrastrar y soltar)
+    def can_contain(self, parent_id: str | None, widget_type: str) -> bool:
+        """¿Puede `parent_id` (None = la pantalla) tener como hijo un widget de este tipo?"""
+        if parent_id is None:
+            return widget_type not in catalog.PSEUDO_TYPES
+        parent = self.project.widget(parent_id)
+        if parent is None:
+            return False
+        if parent.type in catalog.CHILD_LISTS:
+            return catalog.CHILD_LISTS[parent.type][1] == widget_type
+        return parent.type in catalog.CONTAINER_TYPES and widget_type not in catalog.PSEUDO_TYPES
+
+    def move_widgets_to(self, ids: Iterable[str], screen_id: str | None = None, parent_id: str | None = None,
+                        anchor_id: str | None = None, after: bool = True, keep_position: bool = True) -> list[str]:
+        """Mueve widgets a otro sitio del árbol (otro padre, otra página u otro orden).
+
+        Se colocan junto a `anchor_id` (detrás de él en la pila si `after`, es decir, dibujados encima)
+        o, sin ancla, al final (encima de todo). Con `keep_position` conservan su posición en pantalla.
+        Devuelve los ids movidos ([] si el movimiento no es posible o no cambia nada)."""
+        if parent_id:
+            ploc = self.project.locate(parent_id)
+            if ploc is None:
+                return []
+            screen_id = ploc.screen.id
+        screen_id = screen_id or self.current_screen_id
+        if self.project.screen(screen_id) is None:
+            return []
+        wanted = [i for i in dict.fromkeys(ids) if self.project.locate(i) is not None]
+        locs = []
+        for wid in wanted:
+            loc = self.project.locate(wid)
+            anc, inside = loc.parent, False                 # si un antecesor también se mueve, va con él
+            while anc is not None:
+                if anc.id in wanted:
+                    inside = True
+                    break
+                pl = self.project.locate(anc.id)
+                anc = pl.parent if pl else None
+            if not inside:
+                locs.append(loc)
+        if not locs or anchor_id in {lc.widget.id for lc in locs}:
+            return []
+        # el destino no puede estar dentro de lo que se mueve
+        p = parent_id
+        while p is not None:
+            if p in {lc.widget.id for lc in locs}:
+                return []
+            pl = self.project.locate(p)
+            p = pl.parent.id if pl and pl.parent else None
+        for lc in locs:
+            if not self.can_contain(parent_id, lc.widget.type):
+                return []
+            if lc.widget.type in catalog.PSEUDO_TYPES and (lc.parent.id if lc.parent else None) != parent_id:
+                return []                                    # una pestaña no sale de su tabview
+        target = self.project.container(screen_id, parent_id)
+        moved = [lc.widget.id for lc in locs]
+        remaining = [w.id for w in target if w.id not in moved]
+        if anchor_id is not None and anchor_id not in remaining:
+            return []
+        pos = remaining.index(anchor_id) + (1 if after else 0) if anchor_id is not None else len(remaining)
+        new_order = remaining[:pos] + moved + remaining[pos:]
+        same_place = all((lc.screen.id, lc.parent.id if lc.parent else None) == (screen_id, parent_id) for lc in locs)
+        if same_place and new_order == [w.id for w in target]:
+            return []
+        # posición absoluta antes y origen del nuevo padre
+        origin = (0.0, 0.0)
+        if parent_id:
+            pb = self.layout(screen_id).get(parent_id)
+            if pb is not None:
+                origin = (pb.content.x, pb.content.y)
+        dicts = []
+        for lc in locs:
+            d = lc.widget.to_dict()
+            b = self.layout(lc.screen.id).get(lc.widget.id)
+            moving_parent = (lc.screen.id, lc.parent.id if lc.parent else None) != (screen_id, parent_id)
+            if keep_position and moving_parent and b is not None and "align" not in lc.widget.props:
+                for key, absolute, o in (("x", b.rect.x, origin[0]), ("y", b.rect.y, origin[1])):
+                    cur = d.get(key)
+                    if cur is None or (isinstance(cur, (int, float)) and not isinstance(cur, bool)):
+                        d[key] = int(round(absolute - o))
+            dicts.append(d)
+        remove = cmd.RemoveWidgets("Mover en el árbol", self.project, moved)
+        insert = cmd.InsertWidgets("Mover en el árbol", screen_id,
+                                   [(parent_id, pos + i, d) for i, d in enumerate(dicts)])
+        self._execute(CompositeCommand("Mover en el árbol", [remove, insert]))
+        if screen_id != self.current_screen_id:
+            self.set_current_screen(screen_id)
+        self.set_selection(moved)
+        return moved
 
     def change_order(self, how: str) -> None:
         """how: front, back, forward, backward (dentro del contenedor del primer seleccionado)."""

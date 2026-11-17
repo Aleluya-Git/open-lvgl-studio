@@ -1,5 +1,15 @@
 # Novedades
 
+## 0.10.0b2
+
+- **Arrastrar en el árbol del proyecto**: reordenar widgets, meterlos en un contenedor o sacarlos (conservan su posición en pantalla), llevarlos a otra página y reordenar páginas. Respeta las reglas de LVGL (una pestaña no sale de su tabview, una etiqueta no tiene hijos) y se deshace con Ctrl+Z.
+- **Copiar/pegar y duplicar widgets sin id** ya no deja dos widgets con el mismo id interno (el original desaparecía del lienzo y la copia no se podía mover); los proyectos afectados se reparan al abrirlos.
+- **Tamaño de la rejilla ajustable**: Ver › Tamaño de la rejilla (2, 4, 5, 8, 10, 16, 20, 25, 32 o 50 px, o «Personalizado…» de 1 a 500 px). Se usa al dibujar la rejilla y al ajustar al mover o redimensionar, se recuerda entre sesiones y se ve en la barra de estado.
+- **Degradados** en botones, contenedores, barras, deslizadores y arcos: dirección (horizontal/vertical), color final y dónde empieza y termina (`bg_grad_dir`, `bg_grad_color`, `bg_main_stop`, `bg_grad_stop`). En barras y deslizadores también para el indicador y el tirador (el degradado del indicador ocupa la barra entera, como en LVGL); en arcos para la caja de fondo y el tirador. Se ven en el lienzo y el simulador y se exportan a ESPHome y a C.
+- **Editor de estilo completo** por parte y estado, en grupos plegables: fondo, degradado, borde (opacidad, lados), contorno, sombra (desplazamiento, extensión, opacidad), texto (opacidad, fuente, alineación, espaciado, subrayado/tachado), relleno por lados, arco, línea (discontinua), imagen, tamaño mínimo/máximo, desplazamiento y giro. El lienzo dibuja sombra, contorno, lados del borde y decoración del texto.
+- **Indicador de aguja (meter) editable**: «Editar escalas, marcas y agujas…» con vista previa: varias escalas (rango, ángulo total, ángulo de inicio), marcas y marcas principales con números (cantidad, grosor, largo en px o %, color, separación), y los indicadores de ESPHome: aguja de línea, aguja de imagen, arco y color de marcas (degradado en un rango). Los valores de cada aguja y arco se cambian directamente en el panel. El lienzo dibuja el meter como LVGL y el código C lo crea con `lv_scale` (agujas con `lv_scale_set_line_needle_value`, arcos como secciones). Un meter nuevo ya trae escala, marcas, dos arcos y una aguja.
+- **Sistema de licencias desactivado**: todas las funciones (importar/sincronizar YAML, extensión de VS Code e IA) están disponibles sin licencia. El código se conserva y se reactiva con `ENFORCE_DEFAULT = "1"` en `olvgl/application/licensing.py` o con `OLVGL_LICENSE_ENFORCE=1`.
+
 ## 0.10.0b1 — Enterprise (Fase 10)
 
 - **Iconos de la barra superior más grandes** (32 px por defecto) y ajustables en Ver › Tamaño de los iconos (22, 28, 32 o 40 px).

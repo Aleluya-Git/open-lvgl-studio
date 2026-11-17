@@ -41,7 +41,7 @@ Código: `olvgl/domain/visual_diff.py`, `olvgl/infrastructure/versions.py`, `olv
   - **Community**: todo el diseñador, simulador, exportar ESPHome y C, plugins, versiones, colaboración y componentes;
   - **Pro**: además **importar y sincronizar YAML** (menú, abrir un `.yaml`, revincular un proyecto) y la **extensión de VS Code** (la orden `serve` y las órdenes de la línea de comandos que leen YAML responden «requiere Pro»);
   - **Enterprise**: además las **herramientas de IA** (menú IA y la orden `generate`).
-  Se configura en `olvgl/application/licensing.py` (`FEATURES`). `OLVGL_LICENSE_ENFORCE=0` desactiva las comprobaciones (desarrollo y pruebas); `OLVGL_LICENSE=ruta` usa una licencia compartida de la empresa.
+  Se configura en `olvgl/application/licensing.py` (`FEATURES`). **Las comprobaciones están desactivadas por defecto** (`ENFORCE_DEFAULT = "0"`): todo está disponible; `OLVGL_LICENSE_ENFORCE=1` las activa; `OLVGL_LICENSE=ruta` usa una licencia compartida de la empresa.
 - La clave pública del autor ya está registrada en `olvgl/resources/license_public_keys.txt`.
 - `tools/license_tool.py`:
   - `keygen [--register]` crea tu clave privada en `~/.olvgl/licencias/` (nunca en el proyecto) y registra la pública;

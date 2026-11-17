@@ -62,8 +62,8 @@ class LicenseDialog(QDialog):
         color = {"valid": "#66BB6A", "expired": "#FFB74D", "invalid": "#EF5350"}.get(st.state, "#9E9E9E")
         lines.append(f"<span style='color:{color}'>{tr(st.message)}</span>")
         if not lc.ENFORCE:
-            lines.append("<span style='color:#9E9E9E'>" + tr("Beta: todas las funciones están disponibles en "
-                                                            "cualquier edición.") + "</span>")
+            lines.append("<span style='color:#9E9E9E'>" + tr("El sistema de licencias está desactivado: todas las "
+                                                            "funciones están disponibles.") + "</span>")
         self.summary.setText("<br>".join(lines))
         self.features.clear()
         for f, need in lc.FEATURES.items():
