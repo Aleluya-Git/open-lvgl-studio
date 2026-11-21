@@ -502,16 +502,32 @@ class PropertiesPanel(QScrollArea):
             d = combo.itemData(i)
             combo.setCurrentIndex(0)
             if isinstance(d, DisplayProfile):
-                self.vm.set_project_meta(display=DisplayProfile(d.name, d.width, d.height))
+                self.vm.set_display_keep_orientation(DisplayProfile(d.name, d.width, d.height))
             elif d == "__new__":
                 self.open_custom_display()
         combo.activated.connect(apply_preset)
         form.addRow(tr("Placa"), combo)
+        from olvgl.domain.model import ORIENTATION_LABELS, ROTATIONS
+        orient = QComboBox()
+        self.orientation_combo = orient
+        for r in ROTATIONS:
+            orient.addItem(f"{tr(ORIENTATION_LABELS[r])} ({r}°)", r)
+        orient.setToolTip(tr("Gira la pantalla: en vertical se intercambian ancho y alto. Se escribe como "
+                             "«lvgl: rotation:» (ESPHome 2026.4 o posterior; también gira el táctil)."))
+        orient.activated.connect(self._guard(lambda i: self.vm.set_orientation(orient.itemData(i))))
+
+        def refresh_orient():
+            orient.blockSignals(True)
+            orient.setCurrentIndex(max(0, orient.findData(p().rotation)))
+            orient.blockSignals(False)
+        self._refreshers.append(refresh_orient)
+        form.addRow(tr("Orientación"), orient)
         save_btn = QPushButton(tr("★ Guardar esta pantalla en «Mis pantallas»…"))
         save_btn.setToolTip(tr("Para elegirla en otros proyectos y en el simulador"))
         save_btn.clicked.connect(lambda: self.open_custom_display(save_current=True))
         self.save_display_btn = save_btn
-        self._refreshers.append(lambda: save_btn.setVisible(not displays.is_known(p().display)))
+        from olvgl.domain.model import rotate_display as _rot
+        self._refreshers.append(lambda: save_btn.setVisible(not displays.is_known(_rot(p().display, p().rotation, 0))))
         form.addRow("", save_btn)
         name_lbl = QLabel()
         self._refreshers.append(lambda: name_lbl.setText(p().display.name))
@@ -540,7 +556,8 @@ class PropertiesPanel(QScrollArea):
     def open_custom_display(self, save_current: bool = False, show: bool = True):
         """＋ Nueva pantalla personalizada: la aplica al proyecto y, si se pide, la guarda en «Mis pantallas»."""
         from olvgl.presentation.dialogs import CustomDisplayDialog
-        cur = self.vm.project.display
+        from olvgl.domain.model import rotate_display
+        cur = rotate_display(self.vm.project.display, self.vm.project.rotation, 0)   # tamaño natural de la placa
         dlg = CustomDisplayDialog(self, initial=DisplayProfile(cur.name, cur.width, cur.height))
         if not show:
             return dlg
@@ -552,7 +569,7 @@ class PropertiesPanel(QScrollArea):
         d = getattr(dlg, "result_display", None) or dlg.apply()
         if d is None:
             return
-        self.vm.set_project_meta(display=d)
+        self.vm.set_display_keep_orientation(d)
         self._force_rebuild()                       # la lista de pantallas incluye la nueva
 
     # ================================================================ un widget

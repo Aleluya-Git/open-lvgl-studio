@@ -134,6 +134,13 @@ class NewProjectDialog(QDialog):
         self.rotate_btn = QPushButton(tr("⇄ Girar"))
         self.rotate_btn.setToolTip(tr("Intercambia ancho y alto (horizontal ↔ vertical)"))
         self.rotate_btn.clicked.connect(self.rotate)
+        from olvgl.domain.model import ORIENTATION_LABELS, ROTATIONS
+        self.orient = QComboBox()
+        for r in ROTATIONS:
+            self.orient.addItem(f"{tr(ORIENTATION_LABELS[r])} ({r}°)", r)
+        self.orient.setToolTip(tr("Gira la pantalla: en vertical se intercambian ancho y alto. Se escribe como "
+                                  "«lvgl: rotation:» (ESPHome 2026.4 o posterior; también gira el táctil)."))
+        self._rotation = 0
         size_row = QHBoxLayout()
         size_row.addWidget(self.width_sb)
         size_row.addWidget(QLabel("×"))
@@ -154,6 +161,7 @@ class NewProjectDialog(QDialog):
         form = QFormLayout()
         form.addRow(tr("Nombre"), self.name)
         form.addRow(tr("Pantalla"), self.preset)
+        form.addRow(tr("Orientación"), self.orient)
         form.addRow(tr("Tamaño (px)"), size_row)
         self.screen_name_label = QLabel(tr("Nombre de la pantalla"))
         form.addRow(self.screen_name_label, self.screen_name)
@@ -170,6 +178,7 @@ class NewProjectDialog(QDialog):
         self.fill()
         self.preset.currentIndexChanged.connect(self._on_preset)
         self.screen_name.textChanged.connect(lambda _t: self.error.clear())
+        self.orient.currentIndexChanged.connect(lambda _i: self._on_orientation())
         self.width_sb.valueChanged.connect(lambda _v: self._on_size_edited())
         self.height_sb.valueChanged.connect(lambda _v: self._on_size_edited())
         self._on_preset(self.preset.currentIndex())
@@ -204,6 +213,7 @@ class NewProjectDialog(QDialog):
         from olvgl.application import displays
         d = self.preset.itemData(i)
         if isinstance(d, DisplayProfile):
+            d = self._oriented(d)
             for sb, v in ((self.width_sb, d.width), (self.height_sb, d.height)):
                 sb.blockSignals(True)
                 sb.setValue(v)
@@ -218,6 +228,7 @@ class NewProjectDialog(QDialog):
     def _on_size_edited(self) -> None:
         """Cambiar el tamaño de una pantalla de la lista la convierte en personalizada."""
         d = self.preset.currentData()
+        d = self._oriented(d) if isinstance(d, DisplayProfile) else d
         if isinstance(d, DisplayProfile) and (d.width, d.height) != (self.width_sb.value(), self.height_sb.value()):
             if not self.screen_name.text().strip():
                 self.screen_name.setText(f"{d.name} {self.width_sb.value()}×{self.height_sb.value()}")
@@ -227,13 +238,29 @@ class NewProjectDialog(QDialog):
             self._on_preset(self.custom_index())
         self._update_preview()
 
+    def rotation(self) -> int:
+        return int(self.orient.currentData() or 0)
+
+    def _oriented(self, d: DisplayProfile) -> DisplayProfile:
+        from olvgl.domain.model import rotate_display
+        return rotate_display(d, 0, self.rotation())
+
+    def _on_orientation(self) -> None:
+        """Al pasar de horizontal a vertical (o al revés) se intercambian ancho y alto."""
+        new = self.rotation()
+        if (new in (90, 270)) != (self._rotation in (90, 270)):
+            w, h = self.width_sb.value(), self.height_sb.value()
+            for sb, v in ((self.width_sb, h), (self.height_sb, w)):
+                sb.blockSignals(True)
+                sb.setValue(v)
+                sb.blockSignals(False)
+        self._rotation = new
+        self._update_preview()
+
     def rotate(self) -> None:
-        w, h = self.width_sb.value(), self.height_sb.value()
-        for sb, v in ((self.width_sb, h), (self.height_sb, w)):
-            sb.blockSignals(True)
-            sb.setValue(v)
-            sb.blockSignals(False)
-        self._on_size_edited()           # una pantalla de la lista girada pasa a «Personalizada»
+        """⇄ Girar: horizontal ↔ vertical (la pantalla elegida sigue siendo la misma)."""
+        nxt = {0: 90, 90: 0, 180: 270, 270: 180}[self.rotation()]
+        self.orient.setCurrentIndex(self.orient.findData(nxt))
 
     def _update_preview(self) -> None:
         self.preview.setPixmap(display_preview(self.width_sb.value(), self.height_sb.value()))
@@ -264,7 +291,10 @@ class NewProjectDialog(QDialog):
             if self.save_custom.isChecked() and self.settings is not None:
                 if not name:
                     raise displays.DisplayError(tr("Ponle un nombre a la pantalla"))
-                displays.save(self.settings, name, self.width_sb.value(), self.height_sb.value())
+                from olvgl.domain.model import rotate_display
+                nat = rotate_display(DisplayProfile(name, self.width_sb.value(), self.height_sb.value()),
+                                     self.rotation(), 0)          # «Mis pantallas» guarda el tamaño natural
+                displays.save(self.settings, name, nat.width, nat.height)
         except displays.DisplayError as exc:
             self.error.setText(tr(str(exc)))
             return False

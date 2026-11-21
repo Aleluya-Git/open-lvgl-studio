@@ -2,9 +2,13 @@
 
 Diseñador visual de interfaces **LVGL para ESPHome**: dibujas la pantalla y obtienes el YAML listo para tu dispositivo.
 
-Versión **0.10.0b2 — beta pública con funciones Enterprise** (Fases 0 a 10: versiones visuales, colaboración en carpetas compartidas, marketplace de componentes y licencias; pruebas masivas, informes de error y paquete de la beta; IA generativa, SDK de plugins, simulador profesional, extensión de VS Code, MVP, importación de YAML existente, sincronización bidireccional con el YAML, todos los widgets de LVGL con estilos, temas y eventos avanzados, y generador de código C para LVGL 9).
+Versión **0.10.0b3 — beta pública con funciones Enterprise** (Fases 0 a 10: versiones visuales, colaboración en carpetas compartidas, marketplace de componentes y licencias; pruebas masivas, informes de error y paquete de la beta; IA generativa, SDK de plugins, simulador profesional, extensión de VS Code, MVP, importación de YAML existente, sincronización bidireccional con el YAML, todos los widgets de LVGL con estilos, temas y eventos avanzados, y generador de código C para LVGL 9).
 
 ## Instalación (Windows)
+
+**Con el instalador** (recomendado): descarga `OpenLVGLStudio-<versión>-Setup.exe` de las *Releases* y ejecútalo. No pide permisos de administrador: busca Python 3.11+ (si no lo tienes, ofrece instalarlo con winget), instala la aplicación en `%LOCALAPPDATA%\Programs\Open LVGL Studio` con sus dependencias, crea los accesos directos del menú Inicio y del escritorio y la entrada para desinstalarla en *Aplicaciones instaladas*. Para actualizar, ejecuta el instalador nuevo encima. Opciones: `/S` (sin preguntas) y `/D=carpeta`. Se genera con `python tools/build_installer.py` (necesita Go 1.21+).
+
+**Con el .zip** (o el código fuente):
 
 1. Python 3.11 o superior.
 2. `install.bat` → crea `.venv` e instala PySide6, PyYAML y pytest.

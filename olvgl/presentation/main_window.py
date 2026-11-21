@@ -958,7 +958,7 @@ class MainWindow(QMainWindow):
         if dlg.exec():
             json_store.discard_autosave(self.vm.path, app_data_dir())
             name, display = dlg.result_project()
-            self.vm.new(name, display)
+            self.vm.new(name, display, dlg.rotation())
 
     def open_project(self, path: str | None = None) -> bool:
         if not path:
@@ -1209,7 +1209,7 @@ class MainWindow(QMainWindow):
         if any("resolución" in w for w in report.warnings):
             dlg = DisplayDialog(self.vm.project.display, self)
             if dlg.exec():
-                self.vm.set_project_meta(display=dlg.result_display())
+                self.vm.set_display_keep_orientation(dlg.result_display())
                 report.warnings = [w for w in report.warnings if "resolución" not in w]
         self.show_import_report(report)
         QTimer.singleShot(0, self.view.fit_screen)

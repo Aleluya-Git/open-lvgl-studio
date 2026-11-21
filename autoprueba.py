@@ -395,11 +395,15 @@ def gui_tests() -> None:
                    == "Mi pantalla redonda 1.43")
         dlg2.preset.setCurrentIndex(idx)
         assert dlg2.delete_btn.isVisibleTo(dlg2) and (dlg2.width_sb.value(), dlg2.height_sb.value()) == (466, 466)
-        dlg2.preset.setCurrentIndex(0)                              # una de serie, girada → personalizada
+        dlg2.preset.setCurrentIndex(0)                              # una de serie, en vertical
         w0, h0 = dlg2.width_sb.value(), dlg2.height_sb.value()
         dlg2.rotate()
-        assert dlg2.is_custom() and (dlg2.width_sb.value(), dlg2.height_sb.value()) == (h0, w0)
-        assert f"{h0}×{w0}" in dlg2.screen_name.text()
+        assert not dlg2.is_custom() and (dlg2.width_sb.value(), dlg2.height_sb.value()) == (h0, w0)
+        assert dlg2.rotation() == 90
+        _n, dv = dlg2.result_project()
+        assert (dv.width, dv.height) == (h0, w0)
+        dlg2.rotate()
+        assert dlg2.rotation() == 0 and (dlg2.width_sb.value(), dlg2.height_sb.value()) == (w0, h0)
         dlg2.preset.setCurrentIndex(idx)
         assert dlg2.delete_custom() and displays.load(settings) == []
         dlg2.deleteLater()
@@ -1766,6 +1770,40 @@ def gui_tests() -> None:
         assert not vm.widget(box).children
         win.tree.grab().save(os.path.join(CAPTURES, "arbol_orden.png"))
         assert win._save_to(os.path.join(tmp, "arbol.olvgl"))
+
+    @check("Pantalla en vertical u horizontal: Orientación en el panel, lienzo girado y lvgl: rotation (capturas/vertical_*.png)")
+    def _():
+        import yaml as _yaml
+        vm.new("Vertical", DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7B", 1024, 600))
+        btn = vm.add_widget("button", 40, 40, centered=False)
+        vm.set_selection([])
+        win.props.rebuild()
+        pump(100)
+        combo = win.props.orientation_combo
+        assert [combo.itemData(i) for i in range(combo.count())] == [0, 90, 180, 270]
+        combo.setCurrentIndex(combo.findData(90))
+        combo.activated.emit(combo.findData(90))
+        pump(150)
+        d = vm.project.display
+        assert (d.width, d.height) == (600, 1024) and vm.project.rotation == 90
+        r = win.scene.screen_rect()
+        assert (r.width(), r.height()) == (600, 1024)
+        assert _yaml.safe_load(vm.generate_yaml())["lvgl"]["rotation"] == 90
+        win.view.fit_screen()
+        pump(100)
+        win.grab().save(os.path.join(CAPTURES, "vertical_ventana.png"))
+        win.props.grab().save(os.path.join(CAPTURES, "vertical_panel.png"))
+        # cambiar de placa mantiene la orientación
+        idx = next(i for i in range(win.props.display_combo.count())
+                   if getattr(win.props.display_combo.itemData(i), "width", 0) == 800)
+        win.props.display_combo.activated.emit(idx)
+        pump(100)
+        assert (vm.project.display.width, vm.project.display.height) == (480, 800)
+        vm.undo()
+        vm.undo()
+        pump(100)
+        assert vm.project.rotation == 0 and vm.project.display.width == 1024 and vm.widget(btn) is not None
+        assert win._save_to(os.path.join(tmp, "vertical.olvgl"))
 
     # ======================================================= interfaz: iconos, menús e idiomas
     @check("UI · Icono, logotipo e iconos de los widgets")

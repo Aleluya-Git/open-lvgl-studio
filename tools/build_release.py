@@ -26,7 +26,8 @@ INCLUDE_FILES = ["README.md", "LICENSE", "LICENSING.md", "COMMERCIAL-LICENSE.md"
                  "install.bat", "run.bat", "autoprueba.bat", "install_vscode.bat", ".gitignore"]
 EXCLUDE = ["*/__pycache__/*", "*.pyc", "*/.pytest_cache/*", "*/node_modules/*", "*.autosave", "*.bak", "*.lnk",
            "*/fuzz_fallos/*", "capturas/*", ".venv/*", "*/dist/*", "*.vsix", "*/.DS_Store", "*/Thumbs.db",
-           "*.versiones/*", "*.presencia/*", "*.comentarios.json", "*.olvgl-lic"]
+           "*.versiones/*", "*.presencia/*", "*.comentarios.json", "*.olvgl-lic", "*.exe", "*.syso",
+           "tools/installer/payload.zip", "tools/installer/version.txt"]
 # Ficheros personales que nunca se publican (el panel real del desarrollador, etc.)
 PRIVATE = ["examples/panel-domotica_final.yaml", "examples/panel-domotica_final.*", "examples/privado/*"]
 SECRET_RE = re.compile(rb"(sk-ant-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9]{32,}|-----BEGIN [A-Z ]*PRIVATE KEY-----"

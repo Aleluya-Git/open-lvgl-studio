@@ -282,6 +282,28 @@ class DisplayProfile:
                    height=int(d.get("height", 480)))
 
 
+# Orientación: giro de la pantalla en grados (lvgl: rotation: de ESPHome 2026.4+, también gira el táctil).
+# El diseño usa siempre el tamaño ya girado: a 90° o 270° el ancho y el alto se intercambian.
+ROTATIONS = (0, 90, 180, 270)
+ORIENTATION_LABELS = {0: "Horizontal", 90: "Vertical", 180: "Horizontal invertida", 270: "Vertical invertida"}
+
+
+def parse_rotation(value: Any) -> int:
+    """90, "90", "90°" → 90; cualquier otra cosa → 0."""
+    try:
+        n = int(str(value).strip().rstrip("°")) % 360 if value is not None and not isinstance(value, bool) else 0
+    except ValueError:
+        return 0
+    return n if n in ROTATIONS else 0
+
+
+def rotate_display(display: "DisplayProfile", old: int, new: int) -> "DisplayProfile":
+    """El tamaño de diseño de `display` (girada `old`) al girarla a `new`."""
+    swap = (old in (90, 270)) != (new in (90, 270))
+    w, h = (display.height, display.width) if swap else (display.width, display.height)
+    return DisplayProfile(display.name, w, h)
+
+
 DISPLAY_PRESETS: list[DisplayProfile] = [
     DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7B", 1024, 600),
     DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7", 800, 480),
@@ -334,6 +356,11 @@ class Project:
     # ---------------------------------------------------------------- consultas
     def all_screens(self) -> list[Screen]:
         return self.screens + ([self.top_layer] if self.top_layer is not None else [])
+
+    @property
+    def rotation(self) -> int:
+        """Giro de la pantalla (0, 90, 180, 270): `lvgl: rotation:`."""
+        return parse_rotation(self.lvgl_extra.get("rotation"))
 
     def screen(self, screen_id: str) -> Screen | None:
         return next((s for s in self.all_screens() if s.id == screen_id), None)
@@ -515,8 +542,10 @@ def migrate(d: dict) -> dict:
     return d
 
 
-def new_project(name: str = "Nuevo proyecto", display: DisplayProfile | None = None) -> Project:
+def new_project(name: str = "Nuevo proyecto", display: DisplayProfile | None = None, rotation: int = 0) -> Project:
     p = Project(name=name, display=display or DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7B", 1024, 600))
+    if parse_rotation(rotation):
+        p.lvgl_extra["rotation"] = parse_rotation(rotation)
     p.esphome.device_name = sanitize_id(name, "panel").replace("_", "-")
     p.screens.append(Screen(id="main_page", name="Principal"))
     return p

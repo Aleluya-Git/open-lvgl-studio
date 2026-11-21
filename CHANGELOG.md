@@ -1,5 +1,10 @@
 # Novedades
 
+## 0.10.0b3
+
+- **Pantalla en vertical u horizontal**: «Orientación» (Horizontal, Vertical, Horizontal invertida, Vertical invertida) al crear el proyecto y en Propiedades del proyecto. En vertical se intercambian ancho y alto del diseño y se escribe `lvgl: rotation: 90` (ESPHome 2026.4+, gira también el táctil); el código C llama a `lv_display_set_rotation`. Cambiar de placa conserva la orientación y «Mis pantallas» guarda el tamaño natural de la placa. Al importar se reconoce `lvgl: rotation:`. Un solo paso de deshacer.
+- **Instalador para Windows** (`OpenLVGLStudio-<versión>-Setup.exe`, `tools/build_installer.py`): sin permisos de administrador, busca u ofrece instalar Python 3.11+ (winget), instala en `%LOCALAPPDATA%\Programs\Open LVGL Studio`, crea el entorno, los accesos directos y la entrada de desinstalación; actualiza encima conservando el entorno.
+
 ## 0.10.0b2
 
 - **Arrastrar en el árbol del proyecto**: reordenar widgets, meterlos en un contenedor o sacarlos (conservan su posición en pantalla), llevarlos a otra página y reordenar páginas. Respeta las reglas de LVGL (una pestaña no sale de su tabview, una etiqueta no tiene hijos) y se deshace con Ctrl+Z.

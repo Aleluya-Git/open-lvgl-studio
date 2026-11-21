@@ -12,3 +12,7 @@ dist/
 fuzz_fallos/
 *.presencia/
 *.olvgl-lic
+tools/installer/payload.zip
+tools/installer/version.txt
+*.syso
+*.exe

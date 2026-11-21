@@ -15,7 +15,7 @@ from typing import Any
 
 from olvgl.domain import catalog
 from olvgl.domain.model import (TOP_LAYER_ID, Action, DisplayProfile, EventHandler, FontResource,
-                                ImageResource, Project, Screen, StyleDef, Widget)
+                                ImageResource, Project, Screen, StyleDef, Widget, parse_rotation)
 from olvgl.domain.values import node_to_value
 from olvgl.domain.yaml_ast import YMap, YNode, YRaw, YScalar, YSeq
 from olvgl.infrastructure.yaml_parser import IncludeLog, load_esphome, parse
@@ -429,6 +429,10 @@ def guess_display(root: YMap) -> DisplayProfile | None:
             rot = d.get("rotation")
             rv = rot.value if isinstance(rot, YScalar) else 0
             if isinstance(rv, int) and rv in (90, 270):
+                w, h = h, w
+            lv = root.get("lvgl")                    # lvgl: rotation: (ESPHome 2026.4+)
+            lrot = lv.get("rotation") if isinstance(lv, YMap) else None
+            if isinstance(lrot, YScalar) and parse_rotation(lrot.value) in (90, 270):
                 w, h = h, w
             model = d.get("model")
             name = model.value if isinstance(model, YScalar) and isinstance(model.value, str) else "Importada"

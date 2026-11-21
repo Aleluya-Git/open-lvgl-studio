@@ -251,7 +251,7 @@ def page_props(project: Project, screen: Screen | None) -> dict:
     eff.update({k: v for k, v in _plain(extra).items()
                 if k not in ("pages", "top_layer", "theme", "style_definitions", "displays",
                              "touchscreens", "encoders", "keypads", "byte_order", "buffer_size",
-                             "log_level", "color_depth", "default_font", "page_wrap", "full_refresh",
+                             "log_level", "color_depth", "default_font", "page_wrap", "full_refresh", "rotation",
                              "on_idle", "on_pause", "on_resume", "on_draw_start", "on_draw_end")
                 and not k.startswith("on_")})
     if "default_font" in extra and isinstance(extra["default_font"], str):

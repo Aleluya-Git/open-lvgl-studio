@@ -1037,7 +1037,12 @@ class CGenerator:
         src += self.events + [""] if self.events else []
         src += ["static void ui_styles_init(void)", "{"] + (self.styles or ["    /* sin estilos */"]) + ["}", ""]
         src += self.body + [""]
-        src += ["void ui_init(void)", "{", "    ui_styles_init();"]
+        src += ["void ui_init(void)", "{"]
+        if self.p.rotation:
+            src += [f"    /* pantalla girada {self.p.rotation}° (lvgl: rotation:); el diseño es de "
+                    f"{self.p.display.width}×{self.p.display.height} */",
+                    f"    lv_display_set_rotation(lv_display_get_default(), LV_DISPLAY_ROTATION_{self.p.rotation});"]
+        src += ["    ui_styles_init();"]
         src += [f"    ui_{re.sub(r'[^A-Za-z0-9_]', '_', s.id)}_create();" for s in self.p.screens]
         if has_top:
             src.append("    ui_top_layer_create();")

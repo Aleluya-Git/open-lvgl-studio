@@ -1027,6 +1027,14 @@ T = [
     # ---- arrastrar en el árbol del proyecto
     ('Arrastra widgets para cambiar su orden o meterlos en otro contenedor (suéltalos sobre él) o en otra página', 'Drag widgets to change their order or to put them in another container (drop them onto it) or on another page', 'Faites glisser les widgets pour changer leur ordre ou les placer dans un autre conteneur (déposez-les dessus) ou sur une autre page', 'Widgets ziehen, um ihre Reihenfolge zu ändern oder sie in einen anderen Container (darauf ablegen) oder auf eine andere Seite zu verschieben'),
     ('Mover en el árbol', 'Move in the tree', 'Déplacer dans l’arbre', 'Im Baum verschieben'),
+    # ---- orientación de la pantalla
+    ('Gira la pantalla: en vertical se intercambian ancho y alto. Se escribe como «lvgl: rotation:» (ESPHome 2026.4 o posterior; también gira el táctil).', 'Rotates the screen: in portrait, width and height are swapped. It is written as “lvgl: rotation:” (ESPHome 2026.4 or later; also rotates the touchscreen).', 'Fait pivoter l’écran : en portrait, la largeur et la hauteur sont inversées. S’écrit « lvgl: rotation: » (ESPHome 2026.4 ou ultérieur ; fait aussi pivoter le tactile).', 'Dreht den Bildschirm: Im Hochformat werden Breite und Höhe vertauscht. Wird als „lvgl: rotation:“ geschrieben (ESPHome 2026.4 oder neuer; dreht auch den Touchscreen).'),
+    ('Orientación', 'Orientation', 'Orientation', 'Ausrichtung'),
+    ('Horizontal', 'Landscape', 'Paysage', 'Querformat'),
+    ('Vertical', 'Portrait', 'Portrait', 'Hochformat'),
+    ('Horizontal invertida', 'Landscape (flipped)', 'Paysage inversé', 'Querformat (gedreht)'),
+    ('Vertical invertida', 'Portrait (flipped)', 'Portrait inversé', 'Hochformat (gedreht)'),
+    ('Orientación de la pantalla', 'Screen orientation', 'Orientation de l’écran', 'Bildschirmausrichtung'),
 ]
 
 

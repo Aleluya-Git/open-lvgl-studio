@@ -195,9 +195,30 @@ class ProjectViewModel:
         self.path_changed.emit(path)
         self._emit_dirty(force=True)
 
-    def new(self, name: str = "Nuevo proyecto", display: DisplayProfile | None = None) -> None:
+    def new(self, name: str = "Nuevo proyecto", display: DisplayProfile | None = None, rotation: int = 0) -> None:
         self.unlink_source()
-        self.replace_project(new_project(name, display))
+        self.replace_project(new_project(name, display, rotation))
+
+    def set_orientation(self, rotation: int) -> bool:
+        """Gira la pantalla (0/90/180/270): intercambia ancho y alto si hace falta y escribe
+        `lvgl: rotation:` (ESPHome 2026.4+ gira también el táctil). Un solo paso de deshacer."""
+        from olvgl.domain.model import parse_rotation, rotate_display
+        new = parse_rotation(rotation)
+        old = self.project.rotation
+        if new == old:
+            return False
+        p = self.project.clone()
+        p.display = rotate_display(p.display, old, new)
+        if new:
+            p.lvgl_extra["rotation"] = new
+        else:
+            p.lvgl_extra.pop("rotation", None)
+        return self.apply_project("Orientación de la pantalla", p)
+
+    def set_display_keep_orientation(self, display: DisplayProfile) -> None:
+        """Cambia de placa (tamaño natural, apaisado) manteniendo la orientación elegida."""
+        from olvgl.domain.model import rotate_display
+        self.set_project_meta(display=rotate_display(display, 0, self.project.rotation))
 
     def open(self, path: str) -> None:
         """Abre un .olvgl. Si estaba vinculado a un YAML que existe, se revincula

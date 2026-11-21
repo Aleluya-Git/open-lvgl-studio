@@ -4,6 +4,10 @@ Open LVGL Studio es un diseñador visual de pantallas **LVGL para ESPHome**: dib
 
 ## 1. Instalar
 
+**Lo más fácil:** ejecuta `OpenLVGLStudio-<versión>-Setup.exe`. Si no tienes Python 3.11 o superior te ofrece instalarlo; después copia la aplicación, instala lo que necesita (hace falta Internet) y crea los accesos directos. Se desinstala desde *Configuración › Aplicaciones*. Tus proyectos y ajustes no se borran al desinstalar ni al actualizar.
+
+**Con el .zip:**
+
 1. Instala **Python 3.11 o superior** (en python.org, marca «Add Python to PATH»).
 2. Descomprime `OpenLVGLStudio-<versión>.zip` donde quieras.
 3. Ejecuta **`install.bat`**: crea un entorno propio (`.venv`) y el acceso directo «Open LVGL Studio».
@@ -15,6 +19,7 @@ Open LVGL Studio es un diseñador visual de pantallas **LVGL para ESPHome**: dib
 
 | Quiero… | Cómo |
 |---|---|
+| Usar la pantalla en vertical | **Orientación** en el diálogo de proyecto nuevo o en Propiedades del proyecto (sin nada seleccionado): Horizontal, Vertical o invertidas. En vertical se intercambian ancho y alto y el YAML lleva `lvgl: rotation:` (ESPHome 2026.4 o posterior, que también gira el táctil). Cambiar de placa mantiene la orientación. |
 | Empezar un proyecto | **Archivo › Nuevo** (Ctrl+N): elige tu pantalla de la lista o **Personalizada…** para una propia: ponle nombre y tamaño (⇄ Girar cambia horizontal/vertical) y se guarda en **Mis pantallas** (marcadas con ★) para los siguientes proyectos, las propiedades del proyecto y el simulador. Con el proyecto ya creado: panel **Propiedades** (sin nada seleccionado) › Placa › **＋ Nueva pantalla personalizada…** |
 | Abrir el YAML que ya tengo | **Archivo › Importar YAML de ESPHome** (Ctrl+I) o `run.bat mi_panel.yaml` |
 | Ver un ejemplo | `examples\demo_salon.olvgl` y `examples\importar\panel_demo.yaml` |

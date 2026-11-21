@@ -62,4 +62,6 @@ EXTRA = (
     'Degradado sólo en este rango', 'Aguja', 'Aguja de imagen', 'Color de marcas',
     # deshacer: arrastrar en el árbol
     'Mover en el árbol',
+    # orientación de la pantalla
+    'Horizontal', 'Vertical', 'Horizontal invertida', 'Vertical invertida', 'Orientación de la pantalla',
 )
