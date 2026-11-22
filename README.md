@@ -2,7 +2,7 @@
 
 Diseñador visual de interfaces **LVGL para ESPHome**: dibujas la pantalla y obtienes el YAML listo para tu dispositivo.
 
-Versión **0.10.0b3 — beta pública con funciones Enterprise** (Fases 0 a 10: versiones visuales, colaboración en carpetas compartidas, marketplace de componentes y licencias; pruebas masivas, informes de error y paquete de la beta; IA generativa, SDK de plugins, simulador profesional, extensión de VS Code, MVP, importación de YAML existente, sincronización bidireccional con el YAML, todos los widgets de LVGL con estilos, temas y eventos avanzados, y generador de código C para LVGL 9).
+Versión **0.10.0b4 — beta pública con funciones Enterprise** (Fases 0 a 10: versiones visuales, colaboración en carpetas compartidas, marketplace de componentes y licencias; pruebas masivas, informes de error y paquete de la beta; IA generativa, SDK de plugins, simulador profesional, extensión de VS Code, MVP, importación de YAML existente, sincronización bidireccional con el YAML, todos los widgets de LVGL con estilos, temas y eventos avanzados, y generador de código C para LVGL 9).
 
 ## Instalación (Windows)
 
@@ -23,6 +23,7 @@ Guía de usuario: [`docs/GUIA_USUARIO.md`](docs/GUIA_USUARIO.md) (también en **
 - **Colaboración** en una carpeta compartida: fusión automática al guardar si otra persona guardó antes, quién más lo tiene abierto y **comentarios** de revisión sobre los widgets (Ctrl+Alt+C).
 - **Componentes** (Ctrl+Alt+K): guarda una selección como componente, instálalos desde un catálogo (local o URL, verificados con SHA-256) e insértalos con ids únicos.
 - **Licencia** (Ayuda): ediciones Community/Pro/Enterprise con licencias firmadas (Ed25519) y licencias de terceros (las comprobaciones están desactivadas: todo está disponible).
+- **Fuentes** (Diseño › Fuentes, Ctrl+Alt+F): Montserrat, Roboto y Material Design Icons incluidas (se dibujan sin conexión y aparecen en todas las listas de fuentes), y fuentes nuevas desde **GitHub o una URL**, un fichero `.ttf/.otf` o Google Fonts. **Insertar › Icono** (Ctrl+Alt+I) busca entre los 7447 iconos MDI; los iconos usados se añaden solos a `glyphs:`.
 - **Estilo completo**: degradados (botones, contenedores, barras, deslizadores, arcos), sombra, contorno, texto, relleno, arco, línea…; indicador de aguja con escalas, marcas, agujas y arcos editables; tamaño de rejilla ajustable.
 
 Detalles en [`docs/13_enterprise.md`](docs/13_enterprise.md).

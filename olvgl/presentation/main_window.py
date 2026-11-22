@@ -241,6 +241,11 @@ class MainWindow(QMainWindow):
         # --- diseño
         self.a_styles = self._act(tr("&Estilos y tema…"), self.open_styles, "Ctrl+Shift+T",
                                   tr("Definiciones de estilo reutilizables y tema por tipo de widget"), "styles")
+        self.a_fonts = self._act(tr("&Fuentes…"), self.open_fonts, "Ctrl+Alt+F",
+                                 tr("Añadir fuentes (Roboto, iconos, GitHub, ficheros, Google Fonts) y editarlas"),
+                                 "fonts")
+        self.a_insert_icon = self._act(tr("Icono (Material Design)…"), self.insert_icon_widget, "Ctrl+Alt+I",
+                                       tr("Añade una etiqueta con un icono de Material Design Icons"), "icons")
         self.a_front = self._act(tr("Traer al &frente"), lambda: self.vm.change_order("front"), "Ctrl+Shift+]",
                                  icon="front")
         self.a_forward = self._act(tr("Traer &adelante"), lambda: self.vm.change_order("forward"), "Ctrl+]",
@@ -424,6 +429,7 @@ class MainWindow(QMainWindow):
         # ------------------------------------------------ Diseño
         m = mb.addMenu(tr("&Diseño"))
         m.addAction(self.a_styles)
+        m.addAction(self.a_fonts)
         m.addSeparator()
         am = m.addMenu(action_icon("align_left"), tr("Alinear"))
         for i, a in enumerate(self.align_actions):
@@ -542,7 +548,7 @@ class MainWindow(QMainWindow):
             bar(tr("Editar"), "toolbar_edit", (self.a_undo, self.a_redo, None, self.a_cut, self.a_copy,
                                                self.a_paste, self.a_delete)),
             bar(tr("Diseño"), "toolbar_design", (*self.align_actions, None, self.a_front, self.a_back,
-                                                 None, self.a_styles)),
+                                                 None, self.a_styles, self.a_fonts, self.a_insert_icon)),
             bar(tr("Ver"), "toolbar_view", (self.a_zoom_out, self.a_zoom_fit, self.a_zoom_in, None,
                                             self.a_grid, self.a_snap)),
             bar(tr("ESPHome"), "toolbar_esphome", (self.a_import, self.a_export, self.a_export_c, None,
@@ -555,6 +561,7 @@ class MainWindow(QMainWindow):
         m = self.insert_menu
         m.clear()
         self._insert_menu(m)
+        m.addAction(self.a_insert_icon)
         m.addSeparator()
         m.addAction(self.a_add_page)
         m.addAction(self.a_toplayer)
@@ -1305,6 +1312,23 @@ class MainWindow(QMainWindow):
         box.setDetailedText("\n".join(lines))
         box.setInformativeText("\n".join(lines[:12]))
         box.exec()
+
+    def open_fonts(self, show: bool = True):
+        """Diseño › Fuentes."""
+        return self.props.open_fonts(show=show)
+
+    def insert_icon_widget(self, ch: str | None = None, size: int = 48) -> str | None:
+        """Insertar › Icono: una etiqueta con el icono elegido y la fuente de iconos mdi_<tamaño>."""
+        if ch is None:
+            from olvgl.presentation.fonts_ui import IconPickerDialog
+            dlg = IconPickerDialog(self)
+            if not dlg.exec() or not dlg.selected_char:
+                return None
+            ch = dlg.selected_char
+        from olvgl.domain.fonts import library_id
+        font = library_id("mdi", size)
+        self.vm.ensure_font(font)
+        return self.vm.add_widget("label", props={"text": ch, "text_font": font})
 
     def open_styles(self) -> None:
         from olvgl.presentation.dialogs import StylesDialog

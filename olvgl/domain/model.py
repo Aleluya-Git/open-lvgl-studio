@@ -467,6 +467,13 @@ class Project:
                                         "que no existe")
         if not self.screens:
             problems.append("El proyecto no tiene pantallas")
+        from olvgl.domain.fonts import glyphs_for_export, is_icon_font, used_chars
+        icon_fonts = [f for f in self.fonts if is_icon_font(f.data)]
+        used = used_chars(self) if icon_fonts else {}
+        for f in icon_fonts:
+            if glyphs_for_export(self, f, used) is None:
+                problems.append(f"Fuente de iconos '{f.id}': no se usa ningún icono y ESPHome necesita al menos uno "
+                                "en glyphs (usa «Insertar icono» o elimínala)")
         return problems
 
     # ---------------------------------------------------------------- serialización

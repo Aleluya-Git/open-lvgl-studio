@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import os
 from typing import Any, Callable
 
 from PySide6.QtCore import Qt, QTimer
@@ -710,16 +711,19 @@ class PropertiesPanel(QScrollArea):
         if k == catalog.KIND_INT:
             return self._int(lambda: int(getter() or 0), setter, prop.minimum, prop.maximum)
         if k == catalog.KIND_STR:
-            return self._str(lambda: str(getter()), setter)
+            ed = self._str(lambda: str(getter()), setter)
+            return self._with_icon_button(ed, current_ids) if prop.name == "text" else ed
         if k == catalog.KIND_TEXT:
-            return self._text(lambda: str(getter()), lambda v: setter(v, merge=True))
+            ed = self._text(lambda: str(getter()), lambda v: setter(v, merge=True))
+            return self._with_icon_button(ed, current_ids) if prop.name == "text" else ed
         if k == catalog.KIND_COLOR:
             return self._color(getter, setter, tr(prop.label))
         if k == catalog.KIND_BOOL:
             return self._bool(getter, setter)
         if k == catalog.KIND_ENUM:
-            opts = self.vm.font_ids() if prop.name == "text_font" else list(prop.options)
-            return self._enum(getter, setter, opts)
+            if prop.name.split(".")[-1] == "text_font":
+                return self._font_combo(getter, setter)
+            return self._enum(getter, setter, list(prop.options))
         if k == catalog.KIND_IMAGE:
             return self._image_editor(current_ids, getter)
         if k == catalog.KIND_LINES:
@@ -737,6 +741,84 @@ class PropertiesPanel(QScrollArea):
             return self._enum(lambda: getter() or "", lambda v: setter(v or None), ids,
                               ["(ninguno)"] + ids[1:])
         return QLabel(str(getter()))
+
+    # ================================================================ fuentes e iconos
+    ADD_FONT = "__add_font__"
+
+    def _font_combo(self, getter, setter) -> QComboBox:
+        """Lista de fuentes: LVGL, proyecto y biblioteca (se añade al elegirla), y «＋ Añadir fuente…»."""
+        ids = self.vm.font_ids()
+        labels = [self.vm.font_label(i) for i in ids]
+        combo = self._enum(getter, lambda v: self._font_chosen(v, setter, combo), ids + [self.ADD_FONT],
+                           labels + [tr("＋ Añadir fuente…")])
+        combo.setMaxVisibleItems(24)
+        return combo
+
+    def _font_chosen(self, value, setter, combo=None) -> None:
+        if value != self.ADD_FONT:
+            setter(value)
+            return
+        fid = self.open_fonts()
+        if fid:
+            setter(fid)
+        self._force_rebuild()
+
+    def open_fonts(self, show: bool = True):
+        """Diseño › Fuentes. Devuelve el id de la última fuente añadida (o el diálogo sin `show`)."""
+        from olvgl.presentation.fonts_ui import FontsDialog
+        dlg = FontsDialog(self.vm, self)
+        if not show:
+            return dlg
+        dlg.exec()
+        return dlg.last_added
+
+    def _with_icon_button(self, editor: QWidget, current_ids) -> QWidget:
+        row = QWidget()
+        h = QHBoxLayout(row)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.addWidget(editor, 1)
+        b = QToolButton()
+        from olvgl.presentation.icons import action_icon
+        b.setIcon(action_icon("icons"))
+        b.setToolTip(tr("Insertar icono (Material Design Icons)…"))
+        b.clicked.connect(lambda _c=False: self.pick_icon(current_ids()[0]))
+        h.addWidget(b, 0, Qt.AlignmentFlag.AlignTop)
+        return row
+
+    def pick_icon(self, wid: str, ch: str | None = None) -> str | None:
+        if ch is None:
+            from olvgl.presentation.fonts_ui import IconPickerDialog
+            dlg = IconPickerDialog(self)
+            if not dlg.exec() or not dlg.selected_char:
+                return None
+            ch = dlg.selected_char
+        self.insert_icon(wid, ch)
+        return ch
+
+    def insert_icon(self, wid: str, ch: str) -> None:
+        """Añade el icono al texto y, si el texto sólo tiene iconos, pone una fuente de iconos del mismo tamaño."""
+        from olvgl.domain import fonts as F
+        from olvgl.domain.layout import font_size
+        m = self.vm.widget(wid)
+        if m is None:
+            return
+        text = m.props.get("text") if isinstance(m.props.get("text"), str) else ""
+        new = text + ch
+        self.vm.set_prop([wid], "text", new)
+        box = self.vm.box(wid)
+        cur = (box.props.get("text_font") if box else None) or m.props.get("text_font")
+        res = self.vm.project.font(cur) if isinstance(cur, str) else None
+        if res is not None and F.is_icon_font(res.data):
+            return
+        if all(F.is_private_use(c) for c in new if not c.isspace()):
+            from olvgl.presentation.fonts_ui import nearest_icon_font
+            size = font_size(self.vm.project, cur) if cur else 32
+            self.vm.set_prop([wid], "text_font", nearest_icon_font(max(24, size)))   # un icono solo: al menos 24 px
+        elif not os.environ.get("OLVGL_AUTOPRUEBA"):
+            QMessageBox.information(self, tr("Icono añadido"),
+                                    tr("El texto mezcla letras e iconos: en el dispositivo sólo se verán los que tenga "
+                                       "su fuente. Pon el icono en una etiqueta aparte con una fuente de iconos "
+                                       "(mdi_…)."))
 
     # ================================================================ estilo por parte y estado
     def _build_style_section(self, state: dict, sp: catalog.WidgetSpec) -> None:
@@ -915,12 +997,15 @@ class PropertiesPanel(QScrollArea):
             elif kind == "bool":
                 opts = [(tr("Sí"), True), (tr("No"), False)]
             elif kind == "font":
-                opts = [(f, f) for f in self.vm.font_ids()]
+                opts = [(self.vm.font_label(f), f) for f in self.vm.font_ids()] + [(tr("＋ Añadir fuente…"),
+                                                                                   self.ADD_FONT)]
             else:
                 opts = [(o, o) for o in kind[5:].split(",")]
             for text, data in opts:
                 ed.addItem(text, data)
-            ed.activated.connect(self._guard(lambda i: put(key, ed.itemData(i))))
+            ed.activated.connect(self._guard(
+                lambda i: self._font_chosen(ed.itemData(i), lambda v: put(key, v)) if kind == "font"
+                else put(key, ed.itemData(i))))
 
             def refresh():
                 v = get(key)

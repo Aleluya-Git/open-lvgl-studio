@@ -64,4 +64,22 @@ EXTRA = (
     'Mover en el árbol',
     # orientación de la pantalla
     'Horizontal', 'Vertical', 'Horizontal invertida', 'Vertical invertida', 'Orientación de la pantalla',
+    # fuentes
+    'Añadir fuente de la biblioteca',
+    'Añadir fuente desde GitHub o una URL',
+    'Añadir fuente desde un fichero',
+    'Añadir fuente de Google Fonts',
+    'Editar fuente',
+    '＋ Montserrat, Roboto o iconos…',
+    '＋ Desde GitHub o una URL…',
+    '＋ Desde un fichero…',
+    '＋ Google Fonts…',
+    'La dirección debe empezar por https://',
+    'El enlace no apunta a un fichero de fuente (.ttf, .otf, .woff, .woff2, .bdf o .pcf)',
+    'El fichero no es una fuente (.ttf, .otf, .woff, .woff2, .bdf o .pcf)',
+    'Escribe el nombre de la familia tal como aparece en fonts.google.com (p. ej. «Open Sans»)',
+    'El enlace es una página web, no el fichero: en GitHub usa el enlace «Raw» o «Download raw file»',
+    'Lo descargado no es una fuente TTF/OTF/WOFF',
+    'Añadir fuente',
+    'Eliminar fuente',
 )

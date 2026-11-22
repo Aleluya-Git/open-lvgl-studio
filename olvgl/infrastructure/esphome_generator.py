@@ -175,9 +175,16 @@ def generate_ast(project: Project, image_path: PathMap = image_file_path,
 
     if project.fonts:
         seq = YSeq()
+        from olvgl.domain.fonts import glyphs_for_export, is_icon_font, used_chars
+        used = used_chars(project) if any(is_icon_font(f.data) for f in project.fonts) else {}
         for f in project.fonts:
             m = YMap()
             data = dict(f.data)
+            glyphs = glyphs_for_export(project, f, used)  # los iconos que usa el proyecto, solos
+            if glyphs is not None:
+                data["glyphs"] = glyphs
+            elif "glyphs" in data and data["glyphs"] in ([], ""):
+                data.pop("glyphs")                       # fuente de iconos aún sin iconos
             if "file" in data:
                 fv = data.pop("file")
                 m.set("file", value_to_node(font_path(fv) if is_local_file(fv) else fv, "file"))

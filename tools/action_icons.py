@@ -133,4 +133,9 @@ ICONS = {
     "license": s(f'<rect x="3" y="5" width="18" height="13" rx="2" fill="#37474F" stroke="{W}" stroke-width="1.4"/>'
                  f'<path d="M6 9h8M6 12h6" stroke="{G}" stroke-width="1.6"/><circle cx="17" cy="14" r="3" fill="{Y}"/>'
                  f'<path d="M15.5 16.5l-1 4.5 2.5-1.5 2.5 1.5-1-4.5" fill="{O}"/>'),
+    "fonts": s(f'<rect x="2.5" y="3.5" width="19" height="17" rx="2.5" fill="#263238" stroke="{G}" stroke-width="1.2"/>'
+               f'<path d="M5 17.5L9 6.5l4 11M6.4 13.6h5.2" stroke="{B}" stroke-width="2"/>'
+               f'<circle cx="16.8" cy="14.6" r="2.6" stroke="{O}" stroke-width="1.8"/><path d="M19.4 11.5v6" stroke="{O}" stroke-width="1.8"/>'),
+    "icons": s(f'<rect x="2.5" y="2.5" width="19" height="19" rx="4" fill="#263238" stroke="{G}" stroke-width="1.2"/>'
+               f'<path d="M12 5.5l1.9 4 4.4.5-3.3 3 .9 4.4L12 15.2 8.1 17.4l.9-4.4-3.3-3 4.4-.5z" fill="{Y}" stroke="{O}" stroke-width="1"/>'),
 }

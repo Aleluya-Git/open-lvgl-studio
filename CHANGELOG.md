@@ -1,5 +1,12 @@
 # Novedades
 
+## 0.10.0b4
+
+- **Fuentes nuevas** (Diseño › Fuentes, Ctrl+Alt+F, y «＋ Añadir fuente…» en cada lista de fuentes): de la biblioteca, desde **GitHub o una URL** (el enlace de la página del fichero se convierte en el «raw»; «Comprobar» la descarga, verifica que es una fuente y la muestra), desde un fichero `.ttf/.otf/.woff` (se copia a `fonts/` al exportar) o de Google Fonts; con tamaño, bits por píxel, id y caracteres. Editar y eliminar (avisa si se usa).
+- **Montserrat, Roboto y Material Design Icons 7.4.47 incluidas**: van con la aplicación (se dibujan igual sin conexión) y aparecen siempre en las listas de fuentes (`roboto_20`, `roboto_bold_24`, `mdi_48`…); al elegir una se añade sola al proyecto. MDI se escribe con el enlace de GitHub `…/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf`.
+- **Iconos**: Insertar › Icono (Ctrl+Alt+I) y botón junto al texto de etiquetas y botones, con buscador de los 7447 iconos. Los iconos que usa el proyecto se añaden solos a `glyphs:` de su fuente de iconos (respetando lo que ya había); aviso si una fuente de iconos no tiene ninguno.
+- El lienzo dibuja las fuentes con su grosor real (300…900).
+
 ## 0.10.0b3
 
 - **Pantalla en vertical u horizontal**: «Orientación» (Horizontal, Vertical, Horizontal invertida, Vertical invertida) al crear el proyecto y en Propiedades del proyecto. En vertical se intercambian ancho y alto del diseño y se escribe `lvgl: rotation: 90` (ESPHome 2026.4+, gira también el táctil); el código C llama a `lv_display_set_rotation`. Cambiar de placa conserva la orientación y «Mis pantallas» guarda el tamaño natural de la placa. Al importar se reconoce `lvgl: rotation:`. Un solo paso de deshacer.

@@ -6,8 +6,8 @@ import shutil
 from dataclasses import dataclass, field
 
 from olvgl.domain.model import Project
-from olvgl.infrastructure.esphome_generator import (generate_main_yaml, generate_yaml,
-                                                    image_file_path)
+from olvgl.infrastructure.esphome_generator import (font_file_path, generate_main_yaml, generate_yaml,
+                                                    image_file_path, is_local_file)
 from olvgl.infrastructure.json_store import atomic_write_text, resolve_path
 
 
@@ -45,6 +45,20 @@ def export_esphome(project: Project, out_dir: str, project_path: str | None = No
         dst = os.path.join(out_dir, *image_file_path(img.path).split("/"))
         if not src or not os.path.exists(src):
             report.warnings.append(f"Imagen '{img.id}': no se encuentra {img.path}")
+            continue
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        if os.path.abspath(src) != os.path.abspath(dst):
+            shutil.copy2(src, dst)
+        report.written.append(dst)
+    # fuentes en ficheros del equipo → carpeta fonts/ junto al YAML
+    for f in project.fonts:
+        fv = f.data.get("file")
+        if not is_local_file(fv):
+            continue
+        src = resolve_path(fv, project_path)
+        dst = os.path.join(out_dir, *font_file_path(fv).split("/"))
+        if not src or not os.path.exists(src):
+            report.warnings.append(f"Fuente '{f.id}': no se encuentra {fv}")
             continue
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         if os.path.abspath(src) != os.path.abspath(dst):

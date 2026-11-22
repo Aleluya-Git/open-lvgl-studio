@@ -113,7 +113,7 @@ class RenderContext:
         if res is not None:
             from olvgl.infrastructure import font_cache
             file = res.file
-            cached = font_cache.cached_path(file)
+            cached = font_cache.bundled_path(file) or font_cache.cached_path(file)
             if cached:
                 families = _font_families_for_file(cached) + families
             elif isinstance(file, str) and not file.startswith(("gfonts:", "mdi:")) and "://" not in file:
@@ -122,8 +122,12 @@ class RenderContext:
                 families = [file[len("gfonts://"):].split("@")[0]] + families
             elif isinstance(file, dict) and file.get("family"):
                 families = [str(file["family"])] + families
-            if font_cache.font_weight(file) >= 600:
-                f.setBold(True)
+            weight = font_cache.font_weight(file)
+            f.setWeight({100: QFont.Weight.Thin, 200: QFont.Weight.ExtraLight, 300: QFont.Weight.Light,
+                         500: QFont.Weight.Medium, 600: QFont.Weight.DemiBold, 700: QFont.Weight.Bold,
+                         800: QFont.Weight.ExtraBold, 900: QFont.Weight.Black}.get(
+                             min((100, 200, 300, 400, 500, 600, 700, 800, 900), key=lambda w: abs(w - weight)),
+                             QFont.Weight.Normal))
         else:
             f.setWeight(QFont.Weight.Medium)   # las montserrat_N de LVGL son Montserrat Medium
         from olvgl.presentation.fonts import pick_family

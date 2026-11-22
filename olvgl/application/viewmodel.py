@@ -846,6 +846,8 @@ class ProjectViewModel:
         return None
 
     def set_prop(self, ids: Iterable[str], name: str, value: Any, merge: bool = False) -> None:
+        if name.split(".")[-1] == "text_font" and isinstance(value, str):
+            self.ensure_font(value)                  # una fuente de la biblioteca se añade al elegirla
         changes = {}
         for wid in ids:
             w = self.project.widget(wid)
@@ -1321,5 +1323,67 @@ class ProjectViewModel:
     def set_widget_styles(self, widget_id: str, style_ids: list[str]) -> None:
         self.set_raw_prop([widget_id], "styles", _style_value(style_ids))
 
-    def font_ids(self) -> list[str]:
-        return list(catalog.FONTS) + [f.id for f in self.project.fonts]
+    def font_ids(self, library: bool = True) -> list[str]:
+        """Fuentes que se pueden elegir: las de LVGL (montserrat_N), las del proyecto y,
+        con `library`, las de la biblioteca (Roboto, iconos MDI…), que se añaden al elegirlas."""
+        from olvgl.domain.fonts import library_suggestions
+        own = [f.id for f in self.project.fonts]
+        out = list(catalog.FONTS) + own
+        if library:
+            out += [i for i in library_suggestions() if i not in own]
+        return out
+
+    def font_label(self, font_id: str) -> str:
+        from olvgl.domain.fonts import describe, library_font
+        f = self.project.font(font_id)
+        if f is not None:
+            return f"{font_id}  —  {describe(font_id, f.data)}"
+        lib = library_font(font_id)
+        if lib is not None:
+            return f"{font_id}  —  {describe(font_id, lib)}  ＋"
+        return font_id
+
+    # ---------------------------------------------------------------- fuentes
+    def _fonts_change(self, label: str, change) -> bool:
+        p = self.project.clone()
+        change(p)
+        return self.apply_project(label, p, self.current_screen_id)
+
+    def add_font(self, font_id: str, data: dict) -> str | None:
+        """Añade una fuente (`font:`). Devuelve su id, o None si el id no es válido o ya existe."""
+        from olvgl.domain.model import FontResource, is_valid_id
+        if not is_valid_id(font_id) or font_id in self.project.all_ids() or self.project.font(font_id) \
+                or font_id in catalog.FONTS:
+            return None
+        ok = self._fonts_change("Añadir fuente", lambda p: p.fonts.append(FontResource(font_id, copy.deepcopy(data))))
+        return font_id if ok else None
+
+    def update_font(self, font_id: str, data: dict) -> bool:
+        def change(p):
+            f = p.font(font_id)
+            if f is not None:
+                f.data = copy.deepcopy(data)
+        return self.project.font(font_id) is not None and self._fonts_change("Editar fuente", change)
+
+    def remove_font(self, font_id: str) -> bool:
+        if self.project.font(font_id) is None:
+            return False
+        return self._fonts_change("Eliminar fuente",
+                                  lambda p: setattr(p, "fonts", [f for f in p.fonts if f.id != font_id]))
+
+    def font_uses(self, font_id: str) -> int:
+        """Cuántos widgets (o estados/partes) usan la fuente."""
+        n = 0
+        for _s, w in self.project.iter_widgets():
+            vals = [w.props.get("text_font")] + [v.get("text_font") for v in w.props.values() if isinstance(v, dict)]
+            n += sum(1 for v in vals if v == font_id)
+        n += sum(1 for st in self.project.styles if st.props.get("text_font") == font_id)
+        return n
+
+    def ensure_font(self, font_id: str) -> bool:
+        """Si `font_id` es de la biblioteca y el proyecto aún no la tiene, la añade."""
+        from olvgl.domain.fonts import library_font
+        if not isinstance(font_id, str) or self.project.font(font_id) is not None:
+            return False
+        data = library_font(font_id)
+        return data is not None and self.add_font(font_id, data) is not None

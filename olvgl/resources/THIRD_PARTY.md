@@ -8,6 +8,8 @@ Open LVGL Studio se publica con licencia doble (GPL-3.0-or-later o comercial, ve
 | Qt 6 / PySide6 (Qt for Python) | Interfaz gráfica | LGPL v3 (o comercial de The Qt Company) | Se puede usar en software comercial enlazándolo de forma dinámica (como aquí, instalado con pip) y permitiendo que el usuario lo sustituya; hay que incluir el aviso de la LGPL y no impedir que se cambie por otra versión |
 | PyYAML (y libyaml) | Leer y escribir YAML | MIT | Permisiva: conservar el aviso de copyright |
 | Montserrat (fuente) | Dibujar como LVGL | SIL Open Font License 1.1 | Se puede incluir y redistribuir con la aplicación; la fuente no se vende por separado |
+| Roboto (fuente, Google) | Biblioteca de fuentes | SIL Open Font License 1.1 | Igual que Montserrat (`fonts/Roboto-OFL.txt`) |
+| Material Design Icons 7.4.47 (Pictogrammers) | Fuente de iconos y su lista de nombres | Fuentes e iconos: Apache 2.0 | Se puede redistribuir conservando el aviso de licencia (`fonts/MaterialDesignIcons-LICENSE.txt`) |
 | LVGL | Destino del código C generado (no se incluye) | MIT | El código que generas es tuyo; tu firmware enlaza LVGL bajo MIT |
 | ESPHome | Destino del YAML generado (no se incluye) | MIT (código) / GPLv3 (partes en C++) | El YAML que generas es tuyo |
 | pytest | Sólo para las pruebas | MIT | No se distribuye con la aplicación |

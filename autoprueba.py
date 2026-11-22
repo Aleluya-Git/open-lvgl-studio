@@ -1805,6 +1805,77 @@ def gui_tests() -> None:
         assert vm.project.rotation == 0 and vm.project.display.width == 1024 and vm.widget(btn) is not None
         assert win._save_to(os.path.join(tmp, "vertical.olvgl"))
 
+    @check("Fuentes: biblioteca (Roboto, Montserrat, iconos MDI), fichero, GitHub e iconos (capturas/fuentes_*.png)")
+    def _():
+        import yaml as _yaml
+        from olvgl.domain import fonts as F
+        from olvgl.presentation import render as rnd
+        from olvgl.presentation.fonts_ui import IconPickerDialog
+        vm.new("Fuentes", DisplayProfile("Waveshare ESP32-S3-Touch-LCD-7B", 1024, 600))
+        # Insertar › Icono: etiqueta con la fuente mdi_48, que se añade sola
+        pick = IconPickerDialog(win, "lightbulb")
+        pick.show()
+        pump(150)
+        assert pick.view.count() > 0
+        pick.grab().save(os.path.join(CAPTURES, "fuentes_iconos.png"))
+        pick.accept_icon()
+        bulb = pick.selected_char
+        assert bulb and F.icon_name(bulb).startswith("lightbulb")
+        pick.deleteLater()
+        icon = win.insert_icon_widget(bulb)
+        assert vm.widget(icon).props["text_font"] == "mdi_48" and vm.project.font("mdi_48") is not None
+        vm.set_prop([icon], "text_color", "#FFFFFF")
+        img = widget_image(icon, 60, 60)
+        ink = sum(1 for x in range(0, 60, 2) for y in range(0, 60, 2) if img.pixelColor(x, y).lightness() > 150)
+        assert ink > 20, ink                                   # el icono se dibuja con la fuente MDI
+        # Diseño › Fuentes: Roboto Bold 28 de la biblioteca
+        dlg = win.open_fonts(show=False)
+        ed = dlg.add("library", show=False)
+        ed.family.setCurrentIndex(ed.family.findData("roboto"))
+        ed.weight.setCurrentIndex(ed.weight.findData(700))
+        ed.size.setValue(28)
+        assert ed.ident.text() == "roboto_bold_28"
+        ed.accept_result()
+        assert dlg.apply(ed) == "roboto_bold_28"
+        # una fuente de un fichero
+        ed2 = dlg.add("file", show=False)
+        ed2.pick_file(os.path.join(ROOT, "olvgl", "resources", "fonts", "Montserrat-Bold.ttf"))
+        ed2.size.setValue(22)
+        assert ed2.ident.text() == "montserrat_bold_22"
+        ed2.accept_result()
+        assert dlg.apply(ed2) == "montserrat_bold_22"
+        # enlace de GitHub de página → «raw» (sin descargar en la autoprueba)
+        ed3 = dlg.add("url", show=False)
+        ed3.url.setText("https://github.com/Templarian/MaterialDesign-Webfont/blob/v7.4.47/fonts/"
+                        "materialdesignicons-webfont.ttf")
+        assert ed3.data()["file"]["url"] == F.MDI_URL
+        ed3.deleteLater()
+        dlg.show()
+        pump(150)
+        assert dlg.list.count() == 3
+        dlg.grab().save(os.path.join(CAPTURES, "fuentes_dialogo.png"))
+        dlg.close()
+        dlg.deleteLater()
+        lbl = vm.add_widget("label", 100, 200, centered=False)
+        vm.set_prop([lbl], "text", "Salón 21,5 °C")
+        vm.set_prop([lbl], "text_font", "roboto_bold_28")
+        ctx = rnd.RenderContext(vm.project, vm.resolve_path)
+        assert "Roboto" in ctx.font("roboto_bold_28").family(), ctx.font("roboto_bold_28").family()
+        vm.set_prop([lbl], "text_font", "roboto_20")                 # de la biblioteca: se añade sola
+        assert vm.project.font("roboto_20") is not None
+        vm.set_selection([lbl])
+        win.props.rebuild()
+        pump(100)
+        win.props.grab().save(os.path.join(CAPTURES, "fuentes_panel.png"))
+        data = _yaml.safe_load(vm.generate_yaml())
+        mdi = next(f for f in data["font"] if f["id"] == "mdi_48")
+        assert mdi["file"]["url"] == F.MDI_URL and mdi["glyphs"] == [bulb]
+        assert {"roboto_bold_28", "roboto_20", "montserrat_bold_22"} <= {f["id"] for f in data["font"]}
+        vm.set_selection([])
+        pump(100)
+        page_image(vm.current_screen_id).save(os.path.join(CAPTURES, "fuentes_lienzo.png"))
+        assert win._save_to(os.path.join(tmp, "fuentes.olvgl"))
+
     # ======================================================= interfaz: iconos, menús e idiomas
     @check("UI · Icono, logotipo e iconos de los widgets")
     def _():
