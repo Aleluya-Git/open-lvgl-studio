@@ -1876,6 +1876,51 @@ def gui_tests() -> None:
         page_image(vm.current_screen_id).save(os.path.join(CAPTURES, "fuentes_lienzo.png"))
         assert win._save_to(os.path.join(tmp, "fuentes.olvgl"))
 
+    @check("Fuentes: elegir una no deselecciona el widget; tabla de caracteres e iconos por categoría (capturas/caracteres_*.png)")
+    def _():
+        import yaml as _yaml
+        from olvgl.domain import fonts as F
+        from olvgl.presentation.fonts_ui import GlyphPickerDialog
+        lbl = vm.add_widget("label", 300, 300, centered=False)
+        vm.set_selection([lbl])
+        win.props.rebuild()
+        pump(100)
+        vm.set_prop([lbl], "text_font", "roboto_bold_40")          # de la biblioteca: se añade al proyecto
+        pump(200)
+        assert vm.selection == [lbl], vm.selection                   # sigue seleccionado
+        assert win.props.style_editors, "el panel debería seguir mostrando el widget"
+        # iconos por categoría
+        dlg = GlyphPickerDialog(win, icons=True, multi=True)
+        dlg.show()
+        pump(150)
+        assert dlg.select_group("Weather")
+        n = len(dlg.visible_chars())
+        assert n > 100, n
+        dlg.set_visible_checked(True)
+        assert len(dlg.result_chars()) == n
+        dlg.grab().save(os.path.join(CAPTURES, "caracteres_iconos.png"))
+        fd = win.open_fonts(show=False)
+        assert fd.apply_glyphs("mdi_48", dlg.result_chars())
+        dlg.close()
+        dlg.deleteLater()
+        mdi = next(f for f in _yaml.safe_load(vm.generate_yaml())["font"] if f["id"] == "mdi_48")
+        assert len(mdi["glyphs"]) >= n
+        # caracteres de una fuente de texto, por bloques
+        dlg2 = GlyphPickerDialog(win, icons=False, multi=True, file="gfonts://Roboto")
+        dlg2.show()
+        pump(150)
+        dlg2.add_chars(F.PRESET_SPANISH)
+        chars = dlg2.result_chars()
+        assert "ñ" in chars and "€" in chars and "A" in chars, chars[:20]
+        dlg2.grab().save(os.path.join(CAPTURES, "caracteres_texto.png"))
+        assert fd.apply_glyphs("roboto_bold_40", chars)
+        rb = next(f for f in _yaml.safe_load(vm.generate_yaml())["font"] if f["id"] == "roboto_bold_40")
+        assert "ñ" in rb["glyphs"] and isinstance(rb["glyphs"], str)
+        dlg2.close()
+        dlg2.deleteLater()
+        fd.deleteLater()
+        assert win._save_to(os.path.join(tmp, "fuentes.olvgl"))
+
     # ======================================================= interfaz: iconos, menús e idiomas
     @check("UI · Icono, logotipo e iconos de los widgets")
     def _():

@@ -82,4 +82,18 @@ EXTRA = (
     'Lo descargado no es una fuente TTF/OTF/WOFF',
     'Añadir fuente',
     'Eliminar fuente',
+    # categorías de iconos y bloques de Unicode
+    'Cuentas y usuarios', 'Agricultura', 'Alertas y errores', 'Letras y números', 'Animales', 'Organizar',
+    'Flechas', 'Audio', 'Automóvil', 'Banca', 'Baterías', 'Marcas y logotipos', 'Móviles y teléfonos', 'Ropa',
+    'Nube', 'Color', 'Monedas', 'Bases de datos', 'Fecha y hora', 'Programación', 'Dispositivos',
+    'Dibujo y arte', 'Editar', 'Emojis', 'Archivos y carpetas', 'Comida y bebida', 'Formularios', 'Juegos',
+    'Mapas (SIG)', 'Herramientas', 'Salud y belleza', 'Fiestas', 'Domótica', 'Candados y seguridad',
+    'Matemáticas', 'Medicina', 'Música', 'Naturaleza', 'Navegación', 'Notificaciones', 'Personas y familia',
+    'Fotografía', 'Lugares', 'Impresoras', 'Religión', 'Ciencia', 'Ajustes', 'Formas', 'Compras',
+    'Redes sociales', 'Deportes', 'Texto y formato', 'Bocadillos', 'Aviones', 'Otros transportes',
+    'Transporte por carretera', 'Barcos', 'Vectores', 'Vídeo y cine', 'Vistas', 'Tiempo (meteorología)',
+    'Otros', 'Básico latino (A-Z, 0-9, signos)', 'Latín-1 (acentos, ñ, ¿¡, °, €…)', 'Latín extendido A',
+    'Latín extendido B', 'Griego', 'Cirílico', 'Puntuación general', 'Superíndices y subíndices',
+    'Símbolos de letras (℃, №, ™…)', 'Fracciones y números romanos', 'Técnicos', 'Cuadros y bloques',
+    'Formas geométricas', 'Símbolos varios', 'Dingbats',
 )

@@ -140,3 +140,25 @@ def test_export_copies_local_font_files(tmp_path):
     assert os.path.exists(tmp_path / "fonts" / "Roboto-Variable.ttf")
     assert "file: fonts/Roboto-Variable.ttf" in (tmp_path / "ui_lvgl.yaml").read_text(encoding="utf-8")
     assert not [w for w in rep.warnings if "Fuente" in w]
+
+
+def test_choosing_a_font_keeps_the_selection():
+    """Elegir una fuente de la biblioteca la añade al proyecto sin perder el widget seleccionado
+    (antes el panel volvía a las propiedades del proyecto)."""
+    v = vm()
+    lbl = v.add_widget("label")
+    v.set_selection([lbl])
+    seen = []
+    v.selection_changed.connect(lambda ids: seen.append(list(ids)))
+    v.set_prop([lbl], "text_font", "roboto_24")
+    assert v.selection == [lbl] and [] not in seen, seen
+    assert v.project.font("roboto_24") is not None
+
+
+def test_icon_categories_and_search():
+    cats = dict(F.mdi_categories())
+    assert cats["Home Automation"] > 500 and F.OTHER_CATEGORY in cats
+    bulbs = F.search_icons("lightbulb", "Home Automation")
+    assert bulbs and all("Home Automation" in i.categories for i in bulbs)
+    assert any(i.name == "lightbulb" for i in F.search_icons("light"))       # también por alias
+    assert all(F.category_label(c) for c in cats)

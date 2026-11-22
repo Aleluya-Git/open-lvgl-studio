@@ -1,5 +1,11 @@
 # Novedades
 
+## 0.10.0b5
+
+- **Corregido**: al elegir una fuente de la biblioteca (Roboto, iconos…) el panel volvía a las propiedades del proyecto y se perdía el widget seleccionado; ahora sigue seleccionado (también al cambiar la orientación).
+- **Elegir los caracteres de una fuente** en una tabla: botón «Elegir…» junto a «Caracteres» al añadir/editar una fuente y «Caracteres…» en Diseño › Fuentes. En Material Design Icons, los 7447 iconos **por categorías** (Domótica, Tiempo, Flechas, Baterías…, 61 categorías) con buscador por nombre y alias; en las fuentes de texto, los caracteres que tiene la fuente **por bloques de Unicode** (latino, acentos, monedas, flechas…) con atajos «Español» y «Números». Marcar/desmarcar los visibles, ver los elegidos.
+- Insertar › Icono también muestra los iconos por categorías.
+
 ## 0.10.0b4
 
 - **Fuentes nuevas** (Diseño › Fuentes, Ctrl+Alt+F, y «＋ Añadir fuente…» en cada lista de fuentes): de la biblioteca, desde **GitHub o una URL** (el enlace de la página del fichero se convierte en el «raw»; «Comprobar» la descarga, verifica que es una fuente y la muestra), desde un fichero `.ttf/.otf/.woff` (se copia a `fonts/` al exportar) o de Google Fonts; con tamaño, bits por píxel, id y caracteres. Editar y eliminar (avisa si se usa).

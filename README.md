@@ -2,7 +2,7 @@
 
 Diseñador visual de interfaces **LVGL para ESPHome**: dibujas la pantalla y obtienes el YAML listo para tu dispositivo.
 
-Versión **0.10.0b4 — beta pública con funciones Enterprise** (Fases 0 a 10: versiones visuales, colaboración en carpetas compartidas, marketplace de componentes y licencias; pruebas masivas, informes de error y paquete de la beta; IA generativa, SDK de plugins, simulador profesional, extensión de VS Code, MVP, importación de YAML existente, sincronización bidireccional con el YAML, todos los widgets de LVGL con estilos, temas y eventos avanzados, y generador de código C para LVGL 9).
+Versión **0.10.0b5 — beta pública con funciones Enterprise** (Fases 0 a 10: versiones visuales, colaboración en carpetas compartidas, marketplace de componentes y licencias; pruebas masivas, informes de error y paquete de la beta; IA generativa, SDK de plugins, simulador profesional, extensión de VS Code, MVP, importación de YAML existente, sincronización bidireccional con el YAML, todos los widgets de LVGL con estilos, temas y eventos avanzados, y generador de código C para LVGL 9).
 
 ## Instalación (Windows)
 

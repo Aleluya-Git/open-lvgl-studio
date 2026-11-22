@@ -213,7 +213,7 @@ class ProjectViewModel:
             p.lvgl_extra["rotation"] = new
         else:
             p.lvgl_extra.pop("rotation", None)
-        return self.apply_project("Orientación de la pantalla", p)
+        return self.apply_project("Orientación de la pantalla", p, self.current_screen_id, keep_selection=True)
 
     def set_display_keep_orientation(self, display: DisplayProfile) -> None:
         """Cambia de placa (tamaño natural, apaisado) manteniendo la orientación elegida."""
@@ -356,21 +356,25 @@ class ProjectViewModel:
             self.current_screen_id = self.project.screens[0].id
             self.screen_changed.emit(self.current_screen_id)
 
-    def apply_project(self, label: str, project, screen_id: str | None = None) -> bool:
+    def apply_project(self, label: str, project, screen_id: str | None = None, keep_selection: bool = False) -> bool:
         """Sustituye el proyecto por `project` (IA, refactorizaciones) como un único
-        cambio que se puede deshacer. Devuelve False si no cambia nada."""
+        cambio que se puede deshacer. Devuelve False si no cambia nada. Con
+        `keep_selection` se conserva la selección (p. ej. al añadir una fuente)."""
         project.source = dict(self.project.source)
         before = self.project.to_dict()
         after = project.to_dict()
         if before == after:
             return False
+        keep = list(self.selection) if keep_selection else []
         self.selection = []
         self._execute(ReplaceProjectData(label, before, after))
-        self.selection_changed.emit([])
+        keep = [i for i in keep if self.project.widget(i) is not None]
+        self.selection = keep
+        self.selection_changed.emit(list(keep))
         target = screen_id if screen_id and self.project.screen(screen_id) else self.current_screen_id
         if self.project.screen(target or "") is None and self.project.screens:
             target = self.project.screens[0].id
-        if target:
+        if target and (target != self.current_screen_id or not keep_selection):
             self.current_screen_id = target
             self.screen_changed.emit(target)
         return True
@@ -1347,7 +1351,7 @@ class ProjectViewModel:
     def _fonts_change(self, label: str, change) -> bool:
         p = self.project.clone()
         change(p)
-        return self.apply_project(label, p, self.current_screen_id)
+        return self.apply_project(label, p, self.current_screen_id, keep_selection=True)
 
     def add_font(self, font_id: str, data: dict) -> str | None:
         """Añade una fuente (`font:`). Devuelve su id, o None si el id no es válido o ya existe."""

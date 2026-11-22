@@ -20,14 +20,20 @@ SOURCE_TITLES = {"library": "Añadir fuente de la biblioteca", "url": "Añadir f
 SAMPLE = "Aa Bb Ññ 0123 ¿?¡! °C 24,5 %"
 
 
+def font_file(file, project_path_resolver=None) -> str | None:
+    """El fichero de la fuente en este equipo (biblioteca, caché de descargas o fichero local), o None."""
+    from olvgl.infrastructure import font_cache
+    path = font_cache.bundled_path(file) or font_cache.cached_path(file)
+    if path is None and isinstance(file, str) and file and "://" not in file and not file.startswith("mdi:"):
+        path = project_path_resolver(file) if project_path_resolver else file
+    return path if path and os.path.exists(path) else None
+
+
 def preview_font(file, project_path_resolver=None, size: int = 22, weight: int = 400) -> QFont:
     """QFont para la vista previa: fichero de la biblioteca, en caché o local."""
-    from olvgl.infrastructure import font_cache
     from olvgl.presentation import render
     from olvgl.presentation.fonts import pick_family
-    path = font_cache.bundled_path(file) or font_cache.cached_path(file)
-    if path is None and isinstance(file, str) and "://" not in file:
-        path = project_path_resolver(file) if project_path_resolver else file
+    path = font_file(file, project_path_resolver)
     fams = render._font_families_for_file(path) if path else []
     f = QFont()
     f.setFamily(pick_family(fams + render.FONT_FAMILIES))
@@ -125,7 +131,13 @@ class FontEditDialog(QDialog):
         form.addRow(tr("Tamaño"), self.size)
         form.addRow(tr("Calidad"), self.bpp)
         form.addRow(tr("Id"), self.ident)
-        form.addRow(tr("Caracteres"), self.glyphs)
+        glyph_row = QHBoxLayout()
+        glyph_row.addWidget(self.glyphs, 1)
+        self.glyph_btn = QPushButton(tr("Elegir…"))
+        self.glyph_btn.setToolTip(tr("Elegir los caracteres en una tabla (los iconos, por categorías)"))
+        self.glyph_btn.clicked.connect(lambda: self.pick_glyphs())
+        glyph_row.addWidget(self.glyph_btn, 0, Qt.AlignmentFlag.AlignTop)
+        form.addRow(tr("Caracteres"), glyph_row)
         form.addRow("", self.glyph_note)
         self.preview = QLabel()
         self.preview.setMinimumHeight(70)
@@ -246,6 +258,9 @@ class FontEditDialog(QDialog):
         from olvgl.infrastructure.font_cache import font_weight
         font = preview_font(file, self.vm.resolve_path, data.get("size", 20), font_weight(file))
         self.preview.setFont(font)
+        gf = QFont(font)                       # los caracteres elegidos se ven con la propia fuente
+        gf.setPixelSize(18)
+        self.glyphs.setFont(gf)
         if F.is_icon_font(data):
             names = ("home", "lightbulb", "thermometer", "water-percent", "fan", "power", "wifi", "cog")
             icons = dict(F.mdi_icons())
@@ -254,6 +269,25 @@ class FontEditDialog(QDialog):
             self.preview.setText(SAMPLE)
 
     # ------------------------------------------------ acciones
+    def pick_glyphs(self, show: bool = True):
+        """Tabla de caracteres de la fuente (o de iconos por categoría) para elegir los `glyphs`."""
+        try:
+            data = self.data()
+        except F.FontSourceError:
+            data = {}
+        icon = bool(data) and F.is_icon_font(data)
+        dlg = GlyphPickerDialog(self, icons=icon, multi=True, selected=F.glyph_list(self.glyphs.toPlainText()),
+                                file=data.get("file") if data else None)
+        if not show:
+            return dlg
+        if dlg.exec():
+            self.apply_glyphs(dlg.result_chars())
+        return dlg
+
+    def apply_glyphs(self, chars: list[str]) -> None:
+        self.glyphs.setPlainText("".join(chars))
+        self.update_auto()
+
     def pick_file(self, path: str | None = None) -> None:
         if path is None:
             path, _f = QFileDialog.getOpenFileName(self, tr("Elegir fuente"), os.path.expanduser("~"),
@@ -325,9 +359,13 @@ class FontsDialog(QDialog):
         buttons.addSpacing(12)
         self.b_edit = QPushButton(tr("Editar…"))
         self.b_edit.clicked.connect(lambda: self.edit())
+        self.b_glyphs = QPushButton(tr("Caracteres…"))
+        self.b_glyphs.setToolTip(tr("Elegir los caracteres de la fuente en una tabla (los iconos, por categorías)"))
+        self.b_glyphs.clicked.connect(lambda: self.pick_glyphs())
         self.b_remove = QPushButton(tr("Eliminar"))
         self.b_remove.clicked.connect(lambda: self.remove())
         buttons.addWidget(self.b_edit)
+        buttons.addWidget(self.b_glyphs)
         buttons.addWidget(self.b_remove)
         buttons.addStretch(1)
         self.preview = QLabel()
@@ -373,6 +411,7 @@ class FontsDialog(QDialog):
     def show_current(self) -> None:
         fid = self.current()
         self.b_edit.setEnabled(fid is not None)
+        self.b_glyphs.setEnabled(fid is not None)
         self.b_remove.setEnabled(fid is not None)
         f = self.vm.project.font(fid) if fid else None
         if f is None:
@@ -418,6 +457,35 @@ class FontsDialog(QDialog):
             return self.apply(dlg)
         return None
 
+    def pick_glyphs(self, show: bool = True):
+        """Caracteres… de la fuente elegida: tabla de caracteres o de iconos por categoría."""
+        fid = self.current()
+        f = self.vm.project.font(fid) if fid else None
+        if f is None:
+            return None
+        icon = F.is_icon_font(f.data)
+        dlg = GlyphPickerDialog(self, icons=icon, multi=True, selected=F.glyph_list(f.data.get("glyphs")),
+                                file=f.file, title=trf("Caracteres de «{id}»", id=fid))
+        if not show:
+            return dlg
+        if dlg.exec():
+            self.apply_glyphs(fid, dlg.result_chars())
+        return dlg
+
+    def apply_glyphs(self, fid: str, chars: list[str]) -> bool:
+        f = self.vm.project.font(fid)
+        if f is None:
+            return False
+        data = dict(f.data)
+        value = F.glyphs_value(chars, F.is_icon_font(data))
+        if value is None:
+            data.pop("glyphs", None)
+        else:
+            data["glyphs"] = value
+        ok = self.vm.update_font(fid, data)
+        self.fill(select=fid)
+        return ok
+
     def remove(self, confirm: bool = True) -> bool:
         fid = self.current()
         if fid is None:
@@ -434,67 +502,234 @@ class FontsDialog(QDialog):
         return ok
 
 
-class IconPickerDialog(QDialog):
-    """Elegir un icono de Material Design Icons (7447) por su nombre."""
+ALL_KEY = "__todos__"
+SELECTED_KEY = "__elegidos__"
 
-    def __init__(self, parent=None, initial: str = ""):
+
+class GlyphPickerDialog(QDialog):
+    """Elegir caracteres de una fuente.
+
+    - Material Design Icons: los 7447 iconos por categoría (Domótica, Tiempo, Flechas…) y con buscador.
+    - Fuentes de texto: los caracteres que tiene la fuente, por bloques de Unicode, con atajos
+      («Español», «Números»).
+    Con `multi` se marcan varios (los `glyphs:` de la fuente); sin él se elige uno (insertar un icono).
+    """
+
+    LIMIT = 1500
+
+    def __init__(self, parent=None, *, icons: bool = True, multi: bool = False, selected=(), file=None,
+                 initial: str = "", title: str | None = None):
         super().__init__(parent)
-        self.setWindowTitle(tr("Insertar icono (Material Design Icons)"))
-        self.resize(720, 560)
+        self.icons, self.multi = icons, multi
+        self.selected: list[str] = list(dict.fromkeys(selected))
         self.selected_char: str | None = None
+        self.setWindowTitle(title or (tr("Insertar icono (Material Design Icons)") if not multi
+                                      else tr("Elegir caracteres de la fuente")))
+        self.resize(900, 620)
+        # fuente para dibujar las celdas
+        f = QFont()
+        fam = mdi_family() if icons else ""
+        if not icons and file is not None:
+            f = preview_font(file, None, 26)
+        elif fam:
+            f.setFamily(fam)
+        f.setPixelSize(26 if not icons else 30)
+        self.glyph_font = f
+        from PySide6.QtGui import QFontMetrics
+        self._metrics = QFontMetrics(f)
+        # sólo se filtran los caracteres que tiene la fuente si su fichero está en el equipo
+        self._check_support = not icons and file is not None and font_file(file) is not None
+        # categorías / bloques
+        self.groups = QListWidget()
+        self.groups.setMaximumWidth(260)
         self.search = QLineEdit(initial)
-        self.search.setPlaceholderText(tr("Buscar en inglés: light, fan, thermometer, door, blind…"))
         self.search.setClearButtonEnabled(True)
+        self.search.setPlaceholderText(tr("Buscar en inglés: light, fan, thermometer, door, blind…") if icons
+                                       else tr("Escribe caracteres y pulsa Intro para marcarlos (p. ej. ºª€)"))
         self.view = QListWidget()
         self.view.setViewMode(QListView.ViewMode.IconMode)
         self.view.setResizeMode(QListView.ResizeMode.Adjust)
         self.view.setUniformItemSizes(True)
-        self.view.setGridSize(QSize(92, 78))
+        self.view.setGridSize(QSize(96, 80) if icons else QSize(54, 54))
         self.view.setMovement(QListView.Movement.Static)
         self.view.setWordWrap(True)
-        f = QFont()
-        fam = mdi_family()
-        if fam:
-            f.setFamily(fam)
-        f.setPixelSize(30)
-        self.glyph_font = f
-        self.view.itemDoubleClicked.connect(lambda _i: self.accept_icon())
+        self.view.itemDoubleClicked.connect(lambda _i: self.accept_icon() if not self.multi else None)
         self.view.currentItemChanged.connect(lambda *_: self.show_selected())
+        self.view.itemChanged.connect(self._on_check)
         self.info = QLabel()
         self.count = QLabel()
         self.count.setStyleSheet("color:#9E9E9E")
+        right = QVBoxLayout()
+        right.addWidget(self.search)
+        if multi:
+            presets = QHBoxLayout()
+            self.b_all = QPushButton(tr("Marcar todos los visibles"))
+            self.b_all.clicked.connect(lambda: self.set_visible_checked(True))
+            self.b_none = QPushButton(tr("Desmarcar los visibles"))
+            self.b_none.clicked.connect(lambda: self.set_visible_checked(False))
+            presets.addWidget(self.b_all)
+            presets.addWidget(self.b_none)
+            if not icons:
+                for label, chars in ((tr("Español"), F.PRESET_SPANISH), (tr("Números"), F.PRESET_DIGITS)):
+                    b = QPushButton("＋ " + label)
+                    b.clicked.connect(lambda _c=False, ch=chars: self.add_chars(ch))
+                    presets.addWidget(b)
+            b = QPushButton(tr("Quitar todos"))
+            b.clicked.connect(lambda: self.clear_selection())
+            presets.addWidget(b)
+            presets.addStretch(1)
+            right.addLayout(presets)
+        right.addWidget(self.view, 1)
+        row = QHBoxLayout()
+        row.addWidget(self.info, 1)
+        row.addWidget(self.count)
+        right.addLayout(row)
+        body = QHBoxLayout()
+        body.addWidget(self.groups)
+        body.addLayout(right, 1)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept_icon)
         buttons.rejected.connect(self.reject)
         lay = QVBoxLayout(self)
-        lay.addWidget(self.search)
-        lay.addWidget(self.view, 1)
-        row = QHBoxLayout()
-        row.addWidget(self.info, 1)
-        row.addWidget(self.count)
-        lay.addLayout(row)
+        lay.addLayout(body, 1)
         lay.addWidget(buttons)
-        self.search.textChanged.connect(lambda _t: self.fill())
+        self._fill_groups()
+        self.groups.currentRowChanged.connect(lambda _r: self.fill())
+        self.search.textChanged.connect(lambda _t: self._on_search())
+        if not icons:
+            self.search.returnPressed.connect(lambda: (self.add_chars(self.search.text()), self.search.clear()))
         self.fill()
 
-    LIMIT = 600
+    # ------------------------------------------------ grupos
+    def _fill_groups(self) -> None:
+        self.groups.clear()
+        if self.icons:
+            items = [(ALL_KEY, trf("Todos ({n})", n=len(F.mdi_info())))]
+            items += [(c, f"{tr(F.category_label(c))} ({n})") for c, n in F.mdi_categories()]
+        else:
+            items = [(ALL_KEY, tr("Todos los bloques"))]
+            for name, a, b in F.UNICODE_BLOCKS:
+                n = len(self._supported(F.block_chars(a, b)))
+                if n:
+                    items.append(((a, b), f"{tr(name)} ({n})"))
+        if self.multi:
+            items.insert(1, (SELECTED_KEY, trf("Elegidos ({n})", n=len(self.selected))))
+        for key, text in items:
+            it = QListWidgetItem(text)
+            it.setData(Qt.ItemDataRole.UserRole, key)
+            self.groups.addItem(it)
+        start = 1 if self.icons and not self.search.text() else 0
+        if self.icons and not self.search.text():
+            start = next((i for i in range(self.groups.count())
+                          if self.groups.item(i).data(Qt.ItemDataRole.UserRole) == "Home Automation"), 0)
+        self.groups.setCurrentRow(start)
+
+    def select_group(self, key) -> bool:
+        for i in range(self.groups.count()):
+            if self.groups.item(i).data(Qt.ItemDataRole.UserRole) == key:
+                self.groups.setCurrentRow(i)
+                self.fill()
+                return True
+        return False
+
+    def _update_selected_label(self) -> None:
+        for i in range(self.groups.count()):
+            it = self.groups.item(i)
+            if it.data(Qt.ItemDataRole.UserRole) == SELECTED_KEY:
+                it.setText(trf("Elegidos ({n})", n=len(self.selected)))
+
+    def _supported(self, chars: list[str]) -> list[str]:
+        if not self._check_support:
+            return chars
+        return [c for c in chars if self._metrics.inFontUcs4(ord(c))]
+
+    # ------------------------------------------------ celdas
+    def _on_search(self) -> None:
+        if not self.icons:
+            return                              # en las fuentes de texto se escriben caracteres para marcarlos
+        if self.search.text().strip():
+            self.select_group(ALL_KEY)          # buscar en todos los iconos
+        self.fill()
+
+    def entries(self) -> list[tuple[str, str, str]]:
+        """[(carácter, texto de la celda, ayuda)] del grupo y búsqueda actuales."""
+        it = self.groups.currentItem()
+        key = it.data(Qt.ItemDataRole.UserRole) if it else ALL_KEY
+        text = self.search.text()
+        if self.icons:
+            if key == SELECTED_KEY:
+                info = [i for i in F.mdi_info() if i.char in self.selected]
+            else:
+                info = F.search_icons(text, None if key == ALL_KEY else key)
+            return [(i.char, i.char + "\n" + i.name,
+                     f"{i.name} · {F.escape_glyph(i.char)} · " + ", ".join(tr(F.category_label(c)) for c in i.categories))
+                    for i in info]
+        if key == SELECTED_KEY:
+            chars = sorted(self.selected, key=ord)
+        elif key == ALL_KEY:
+            chars = [c for _n, a, b in F.UNICODE_BLOCKS for c in F.block_chars(a, b)]
+        else:
+            chars = F.block_chars(*key)
+        chars = self._supported(chars)
+        return [(c, c, f"U+{ord(c):04X}") for c in chars]
 
     def fill(self) -> None:
-        words = [w for w in self.search.text().lower().replace("_", "-").split() if w]
-        found = [(n, c) for n, c in F.mdi_icons() if all(w in n for w in words)]
+        entries = self.entries()
+        self.view.blockSignals(True)
         self.view.clear()
-        for name, ch in found[:self.LIMIT]:
-            it = QListWidgetItem(ch + "\n" + name)
+        for ch, label, tip in entries[:self.LIMIT]:
+            it = QListWidgetItem(label)
             it.setData(Qt.ItemDataRole.UserRole, ch)
-            it.setToolTip(f"{name}  ·  {F.escape_glyph(ch)}")
+            it.setToolTip(tip)
             it.setFont(self.glyph_font)
             it.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)
+            if self.multi:
+                it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                it.setCheckState(Qt.CheckState.Checked if ch in self.selected else Qt.CheckState.Unchecked)
             self.view.addItem(it)
-        shown = min(len(found), self.LIMIT)
-        self.count.setText(trf("{shown} de {total} iconos", shown=shown, total=len(found)) +
-                           ("" if shown == len(found) else " · " + tr("afina la búsqueda para ver más")))
-        if self.view.count():
+        self.view.blockSignals(False)
+        shown = min(len(entries), self.LIMIT)
+        msg = trf("{shown} de {total}", shown=shown, total=len(entries))
+        if shown < len(entries):
+            msg += " · " + tr("afina la búsqueda para ver más")
+        if self.multi:
+            msg += " · " + trf("{n} elegidos", n=len(self.selected))
+        self.count.setText(msg)
+        if self.view.count() and not self.multi:
             self.view.setCurrentRow(0)
+
+    def visible_chars(self) -> list[str]:
+        return [self.view.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.view.count())]
+
+    def _on_check(self, item) -> None:
+        ch = item.data(Qt.ItemDataRole.UserRole)
+        on = item.checkState() == Qt.CheckState.Checked
+        if on and ch not in self.selected:
+            self.selected.append(ch)
+        elif not on and ch in self.selected:
+            self.selected.remove(ch)
+        self._update_selected_label()
+        self.count.setText(self.count.text().rsplit(" · ", 1)[0] + " · " + trf("{n} elegidos", n=len(self.selected)))
+
+    def set_checked(self, chars, on: bool) -> None:
+        for ch in chars:
+            if on and ch not in self.selected:
+                self.selected.append(ch)
+            elif not on and ch in self.selected:
+                self.selected.remove(ch)
+        self._update_selected_label()
+        self.fill()
+
+    def set_visible_checked(self, on: bool) -> None:
+        self.set_checked(self.visible_chars(), on)
+
+    def add_chars(self, text: str) -> None:
+        self.set_checked(self._supported([c for c in dict.fromkeys(text) if not c.isspace()]), True)
+
+    def clear_selection(self) -> None:
+        self.selected = []
+        self._update_selected_label()
+        self.fill()
 
     def show_selected(self) -> None:
         it = self.view.currentItem()
@@ -502,14 +737,30 @@ class IconPickerDialog(QDialog):
             self.info.setText("")
             return
         ch = it.data(Qt.ItemDataRole.UserRole)
-        self.info.setText(f"<b>{F.icon_name(ch)}</b> · <code>{F.escape_glyph(ch)}</code>")
+        name = F.icon_name(ch) if self.icons else f"U+{ord(ch):04X}"
+        self.info.setText(f"<b>{name}</b> · <code>{F.escape_glyph(ch)}</code>")
+
+    def result_chars(self) -> list[str]:
+        return sorted(dict.fromkeys(self.selected), key=ord)
 
     def accept_icon(self) -> None:
+        if self.multi:
+            self.accept()
+            return
         it = self.view.currentItem()
         if it is None:
             return
         self.selected_char = it.data(Qt.ItemDataRole.UserRole)
         self.accept()
+
+
+class IconPickerDialog(GlyphPickerDialog):
+    """Insertar un icono de Material Design Icons (por categoría o buscando)."""
+
+    def __init__(self, parent=None, initial: str = ""):
+        super().__init__(parent, icons=True, multi=False, initial=initial)
+        if initial:
+            self._on_search()
 
 
 def nearest_icon_font(size: int) -> str:

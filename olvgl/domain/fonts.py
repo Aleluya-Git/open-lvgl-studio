@@ -306,24 +306,62 @@ def glyphs_for_export(project, font, used: dict[str, set[str]] | None = None) ->
 
 
 # --------------------------------------------------------------------------- iconos MDI
+@dataclass(frozen=True)
+class IconInfo:
+    name: str
+    char: str
+    categories: tuple[str, ...]
+    aliases: tuple[str, ...]
+
+    def matches(self, words: list[str]) -> bool:
+        hay = " ".join((self.name,) + self.aliases)
+        return all(w in hay for w in words)
+
+
+OTHER_CATEGORY = "Other"
+_INFO: list[IconInfo] = []
 _ICONS: list[tuple[str, str]] = []
 _ICON_LIST = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "fonts",
                           "mdi_icons.txt")
 
 
-def mdi_icons() -> list[tuple[str, str]]:
-    """[(nombre, carácter)] de los 7447 iconos de Material Design Icons que van con la aplicación."""
-    if not _ICONS:
+def mdi_info() -> list[IconInfo]:
+    """Los 7447 iconos de Material Design Icons con sus categorías y alias (lista que va con la aplicación)."""
+    if not _INFO:
         try:
             with open(_ICON_LIST, encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("#") or not line.strip():
                         continue
-                    name, code = line.split()
-                    _ICONS.append((name, chr(int(code, 16))))
+                    parts = line.rstrip("\n").split("\t") if "\t" in line else line.split()
+                    name, code = parts[0], parts[1]
+                    cats = tuple(c for c in (parts[2].split("|") if len(parts) > 2 else []) if c) or (OTHER_CATEGORY,)
+                    aliases = tuple(a for a in (parts[3].split(",") if len(parts) > 3 else []) if a)
+                    _INFO.append(IconInfo(name, chr(int(code, 16)), cats, aliases))
         except OSError:
             pass
+    return _INFO
+
+
+def mdi_icons() -> list[tuple[str, str]]:
+    """[(nombre, carácter)] de los iconos de Material Design Icons."""
+    if not _ICONS:
+        _ICONS.extend((i.name, i.char) for i in mdi_info())
     return _ICONS
+
+
+def mdi_categories() -> list[tuple[str, int]]:
+    """[(categoría, número de iconos)] ordenadas por nombre, «Other» al final."""
+    count: dict[str, int] = {}
+    for i in mdi_info():
+        for c in i.categories:
+            count[c] = count.get(c, 0) + 1
+    return sorted(count.items(), key=lambda kv: (kv[0] == OTHER_CATEGORY, kv[0]))
+
+
+def search_icons(text: str = "", category: str | None = None) -> list[IconInfo]:
+    words = [w for w in text.lower().replace("_", "-").split() if w]
+    return [i for i in mdi_info() if (category is None or category in i.categories) and i.matches(words)]
 
 
 def icon_name(ch: str) -> str | None:
@@ -333,3 +371,69 @@ def icon_name(ch: str) -> str | None:
 def escape_glyph(ch: str) -> str:
     """'\\U000F0335' — como se escriben los iconos en el YAML de ESPHome."""
     return f"\\U{ord(ch):08X}" if ord(ch) > 0xFFFF else f"\\u{ord(ch):04X}"
+
+
+# Nombres en español de las categorías de Material Design Icons (se traducen con tr()).
+CATEGORY_LABELS = {
+    "Account / User": "Cuentas y usuarios", "Agriculture": "Agricultura", "Alert / Error": "Alertas y errores",
+    "Alpha / Numeric": "Letras y números", "Animal": "Animales", "Arrange": "Organizar", "Arrow": "Flechas",
+    "Audio": "Audio", "Automotive": "Automóvil", "Banking": "Banca", "Battery": "Baterías",
+    "Brand / Logo": "Marcas y logotipos", "Cellphone / Phone": "Móviles y teléfonos", "Clothing": "Ropa",
+    "Cloud": "Nube", "Color": "Color", "Currency": "Monedas", "Database": "Bases de datos",
+    "Date / Time": "Fecha y hora", "Developer / Languages": "Programación", "Device / Tech": "Dispositivos",
+    "Drawing / Art": "Dibujo y arte", "Edit / Modify": "Editar", "Emoji": "Emojis",
+    "Files / Folders": "Archivos y carpetas", "Food / Drink": "Comida y bebida", "Form": "Formularios",
+    "Gaming / RPG": "Juegos", "Geographic Information System": "Mapas (SIG)", "Hardware / Tools": "Herramientas",
+    "Health / Beauty": "Salud y belleza", "Holiday": "Fiestas", "Home Automation": "Domótica",
+    "Lock": "Candados y seguridad", "Math": "Matemáticas", "Medical / Hospital": "Medicina",
+    "Music": "Música", "Nature": "Naturaleza", "Navigation": "Navegación", "Notification": "Notificaciones",
+    "People / Family": "Personas y familia", "Photography": "Fotografía", "Places": "Lugares",
+    "Printer": "Impresoras", "Religion": "Religión", "Science": "Ciencia", "Settings": "Ajustes",
+    "Shape": "Formas", "Shopping": "Compras", "Social Media": "Redes sociales", "Sport": "Deportes",
+    "Text / Content / Format": "Texto y formato", "Tooltip": "Bocadillos", "Transportation + Flying": "Aviones",
+    "Transportation + Other": "Otros transportes", "Transportation + Road": "Transporte por carretera",
+    "Transportation + Water": "Barcos", "Vector": "Vectores", "Video / Movie": "Vídeo y cine", "View": "Vistas",
+    "Weather": "Tiempo (meteorología)", OTHER_CATEGORY: "Otros",
+}
+
+
+def category_label(category: str) -> str:
+    return CATEGORY_LABELS.get(category, category)
+
+
+# Bloques de Unicode que se ofrecen al elegir los caracteres de una fuente de texto.
+UNICODE_BLOCKS = (
+    ("Básico latino (A-Z, 0-9, signos)", 0x20, 0x7E),
+    ("Latín-1 (acentos, ñ, ¿¡, °, €…)", 0xA0, 0xFF),
+    ("Latín extendido A", 0x100, 0x17F),
+    ("Latín extendido B", 0x180, 0x24F),
+    ("Griego", 0x370, 0x3FF),
+    ("Cirílico", 0x400, 0x4FF),
+    ("Puntuación general", 0x2000, 0x206F),
+    ("Superíndices y subíndices", 0x2070, 0x209F),
+    ("Monedas", 0x20A0, 0x20CF),
+    ("Símbolos de letras (℃, №, ™…)", 0x2100, 0x214F),
+    ("Fracciones y números romanos", 0x2150, 0x218F),
+    ("Flechas", 0x2190, 0x21FF),
+    ("Matemáticas", 0x2200, 0x22FF),
+    ("Técnicos", 0x2300, 0x23FF),
+    ("Cuadros y bloques", 0x2500, 0x259F),
+    ("Formas geométricas", 0x25A0, 0x25FF),
+    ("Símbolos varios", 0x2600, 0x26FF),
+    ("Dingbats", 0x2700, 0x27BF),
+)
+# Conjuntos rápidos
+PRESET_SPANISH = "".join(chr(c) for c in range(0x20, 0x7F)) + "áéíóúüñÁÉÍÓÚÜÑ¿¡°ºª€·…«»"
+PRESET_DIGITS = "0123456789.,:;-+%°CF /"
+
+
+def block_chars(start: int, end: int) -> list[str]:
+    return [chr(c) for c in range(start, end + 1) if chr(c).isprintable() and not chr(c).isspace()]
+
+
+def glyphs_value(chars: list[str], icon: bool) -> Any:
+    """Cómo se guarda una selección: lista de iconos o cadena de caracteres, ordenados."""
+    ordered = sorted(dict.fromkeys(c for c in chars if not c.isspace()), key=ord)
+    if not ordered:
+        return None
+    return ordered if icon else "".join(ordered)
